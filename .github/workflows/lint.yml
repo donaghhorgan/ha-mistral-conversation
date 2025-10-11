@@ -1,0 +1,71 @@
+name: Lint
+permissions:
+  contents: read
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install UV
+        uses: astral-sh/setup-uv@v3
+
+      - name: Install dependencies
+        run: |
+          uv sync --dev
+
+      - name: Check Python Version Consistency
+        run: |
+          python scripts/check_python_version_consistency.py
+
+      - name: Check HA Version Consistency
+        run: |
+          python scripts/check_ha_version_consistency.py
+
+      - name: Run Ruff (Formatting check)
+        run: |
+          uv run ruff format --check --diff .
+
+      - name: Run Ruff (Linting and import sorting)
+        run: |
+          uv run ruff check .
+
+      - name: Run PyMarkdown (Markdown linting)
+        run: |
+          uv run pymarkdown scan *.md
+
+      - name: Run MyPy (Type checking)
+        run: |
+          uv run mypy .
+
+      - name: Run Bandit (Security linting)
+        run: |
+          uv run bandit -r -f json -o bandit-report.json custom_components/ scripts/ || true
+          uv run bandit -r custom_components/ scripts/
+
+      - name: Check manifest.json consistency
+        run: |
+          python scripts/check_manifest_consistency.py
+
+      - name: Upload Bandit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bandit-security-report
+          path: bandit-report.json

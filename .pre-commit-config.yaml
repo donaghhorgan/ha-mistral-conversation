@@ -1,0 +1,94 @@
+repos:
+  # TOML sorting and formatting
+  - repo: https://github.com/pappasam/toml-sort
+    rev: v0.23.1
+    hooks:
+      - id: toml-sort-fix
+        name: Sort TOML files
+        args: [--no-sort-tables]
+
+  # Ruff for Python formatting and linting
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.13.2
+    hooks:
+      # Run the formatter
+      - id: ruff-format
+        name: Ruff Format
+        args: [--check, --diff]
+      # Run the linter (includes import sorting)
+      - id: ruff
+        name: Ruff Lint
+        args: [--fix]
+
+  # MyPy for type checking
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.14.0
+    hooks:
+      - id: mypy
+        name: MyPy Type Check
+        additional_dependencies: [types-requests]
+
+  # Bandit for security linting
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.8.6
+    hooks:
+      - id: bandit
+        name: Bandit Security Check
+        args: [-r, custom_components/, scripts/]
+        pass_filenames: false
+
+  # PyMarkdown for Markdown linting
+  - repo: https://github.com/jackdewinter/pymarkdown
+    rev: v0.9.32
+    hooks:
+      - id: pymarkdown
+        name: PyMarkdown Lint
+        args: [scan]
+        files: \.md$
+
+  # Local hooks
+  - repo: local
+    hooks:
+      - id: python-version-consistency
+        name: Check Python Version Consistency
+        entry: python scripts/check_python_version_consistency.py
+        language: system
+        files: ^(pyproject\.toml|\.python-version|\.devcontainer\.json|\.github/workflows/.*\.yml)$
+        pass_filenames: false
+      - id: ha-version-consistency
+        name: Check HA Version Consistency
+        entry: python scripts/check_ha_version_consistency.py
+        language: system
+        files: ^(hacs\.json|pyproject\.toml)$
+        pass_filenames: false
+      - id: validate-pyproject
+        name: Validate pyproject.toml
+        entry: uv run validate-pyproject
+        language: system
+        files: ^pyproject\.toml$
+        pass_filenames: false
+      - id: sync-manifest
+        name: Check Manifest Consistency
+        entry: python scripts/check_manifest_consistency.py
+        language: system
+        files: ^(pyproject\.toml|custom_components/.*/manifest\.json)$
+        pass_filenames: false
+
+  # Additional general hooks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+        name: Trim Trailing Whitespace
+      - id: end-of-file-fixer
+        name: Fix End of Files
+      - id: check-yaml
+        name: Check YAML
+      - id: check-json
+        name: Check JSON
+      - id: check-toml
+        name: Check TOML
+      - id: check-merge-conflict
+        name: Check for merge conflicts
+      - id: debug-statements
+        name: Debug Statements (Python)
