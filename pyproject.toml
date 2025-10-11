@@ -3,35 +3,103 @@ name = "ha-mistral-conversation"
 version = "1.0.0"
 description = "A Home Assistant integration that provides a conversation agent powered by Mistral AI"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 dependencies = [
-    "homeassistant>=2023.5.0",
+    "mistralai>=1.0.0",
     "aiohttp>=3.8.0",
+    "homeassistant>=2024.8.0",
     "voluptuous>=0.13.1",
 ]
-license = { text = "MIT" }
-authors = [{ name = "Donagh Horgan", email = "donagh.horgan@gmail.com" }]
-keywords = ["home-assistant", "mistral-ai", "conversation", "ai", "llm"]
-classifiers = [
-    "Development Status :: 5 - Production/Stable",
-    "Intended Audience :: End Users/Desktop",
-    "License :: OSI Approved :: MIT License",
-    "Operating System :: OS Independent",
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.12",
-    "Topic :: Home Automation",
+
+[dependency-groups]
+dev = [
+  "bandit>=1.8.6",
+  "mypy>=1.14.0",
+  "pre-commit>=4.3.0",
+  "pymarkdownlnt>=0.9.32",
+  "ruff>=0.13.2",
+  "toml-sort>=0.23.1",
+  "validate-pyproject>=0.20.2",
 ]
 
-[project.urls]
-Homepage = "https://github.com/donaghhorgan/ha-mistral-conversation"
-Repository = "https://github.com/donaghhorgan/ha-mistral-conversation"
-Issues = "https://github.com/donaghhorgan/ha-mistral-conversation/issues"
-Documentation = "https://github.com/donaghhorgan/ha-mistral-conversation#readme"
+[tool.bandit]
+exclude_dirs = [".venv", "tests"]
+skips = ["B101"] # Skip assert_used test
+recursive = true
 
-[tool.setuptools]
-packages = ["custom_components.mistral_conversation"]
+[tool.mypy]
+python_version = "3.12"
+ignore_missing_imports = true
+strict_optional = false
+warn_return_any = false
+warn_unused_configs = true
+disallow_untyped_defs = false
+check_untyped_defs = true
+exclude = [".venv"]
 
-[build-system]
-requires = ["setuptools>=45", "wheel"]
-build-backend = "setuptools.build_meta"
+[tool.pymarkdownlnt]
+# Configuration for PyMarkdown linting
+disable-rules = [
+  "MD009", # Trailing spaces
+  "MD013", # Line length
+  "MD022", # Headers should be surrounded by blank lines
+  "MD031", # Fenced code blocks should be surrounded by blank lines
+  "MD033", # Inline HTML
+  "MD036", # Emphasis used instead of a heading
+  "MD041", # First line in file should be a top level heading
+  "MD047" # Files should end with a single newline character
+]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 88
+exclude = [
+  ".git",
+  "__pycache__",
+  ".mypy_cache",
+  ".pytest_cache",
+  "build",
+  "dist",
+  ".venv"
+]
+
+[tool.ruff.format]
+# Use single quotes for strings
+quote-style = "double"
+# Indent with spaces
+indent-style = "space"
+# Respect magic trailing commas
+skip-magic-trailing-comma = false
+# Automatically detect line endings
+line-ending = "auto"
+
+[tool.ruff.lint]
+select = [
+  "E", # pycodestyle errors
+  "W", # pycodestyle warnings
+  "F", # pyflakes
+  "I", # isort
+  "B", # flake8-bugbear
+  "C4", # flake8-comprehensions
+  "UP", # pyupgrade
+  "ARG", # flake8-unused-arguments
+  "SIM", # flake8-simplify
+  "TCH", # flake8-type-checking
+  "N" # pep8-naming
+]
+ignore = [
+  "E203", # whitespace before ':'
+  "E501", # line too long (handled by ruff formatter)
+  "ARG001", # unused function argument (common in Home Assistant)
+  "ARG002", # unused method argument (common in Home Assistant)
+  "TC002", # move third-party imports into type-checking block (can break Home Assistant)
+  "N818" # exception naming (Home Assistant convention)
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["custom_components.mistral_stt"]
+known-third-party = ["homeassistant"]
+section-order = ["future", "standard-library", "third-party", "first-party", "local-folder"]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"] # Allow unused imports in __init__.py files
