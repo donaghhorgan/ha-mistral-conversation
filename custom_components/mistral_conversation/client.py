@@ -296,8 +296,10 @@ class MistralAIClient:
         prompt: str,
         conversation_id: str | None = None,
         context: str | None = None,
+        conversation_history: list[dict[str, str]] | None = None,
+        max_context_tokens: int = 4096,
     ) -> str:
-        """Generate a response for the given prompt."""
+        """Generate a response for the given prompt with conversation history."""
         # Validate prompt
         if not prompt:
             raise ValueError("Prompt cannot be empty")
@@ -313,11 +315,46 @@ class MistralAIClient:
         if conversation_id is not None and not isinstance(conversation_id, str):
             raise ValueError("Conversation ID must be a string")
 
+        # Validate conversation history if provided
+        if conversation_history is not None:
+            if not isinstance(conversation_history, list):
+                raise ValueError("Conversation history must be a list")
+            for msg in conversation_history:
+                if (
+                    not isinstance(msg, dict)
+                    or "role" not in msg
+                    or "content" not in msg
+                ):
+                    raise ValueError(
+                        "Each history message must have 'role' and 'content'"
+                    )
+
         messages: list[MistralMessage] = []
 
         # Add system context if provided
         if context:
             messages.append({"role": "system", "content": context})
+
+        # Add conversation history if provided (respecting token limits)
+        if conversation_history:
+            # For now, add recent history messages until we hit a reasonable limit
+            # In future, we can use actual token counting from API response
+            history_messages_to_add = []
+
+            # Add most recent messages first until we reach the limit
+            for msg in reversed(conversation_history):
+                # Simple character-based approximation for now
+                if len(msg["content"]) < 1000:  # Reasonable message size
+                    history_messages_to_add.insert(
+                        0, {"role": msg["role"], "content": msg["content"]}
+                    )
+                    # Stop if we have enough history
+                    if len(history_messages_to_add) >= 10:
+                        break
+
+            # Add history messages after system prompt
+            for msg in history_messages_to_add:
+                messages.insert(1, msg)
 
         # Add user message
         messages.append({"role": "user", "content": prompt})

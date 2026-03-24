@@ -154,9 +154,23 @@ class MistralConversationEntity(conversation.ConversationEntity):
         _LOGGER.debug("User input: %s", user_input.text)
 
         try:
+            # Get conversation history for context
+            conversation_history = []
+            if conversation_id:
+                existing_chat_logs = self.hass.data.get("conversation_chat_logs", {})
+                if conversation_id in existing_chat_logs:
+                    existing_chat_log = existing_chat_logs[conversation_id]
+                    # Extract user and assistant messages (skip system messages)
+                    conversation_history = [
+                        {"role": msg.role, "content": msg.content}
+                        for msg in existing_chat_log.content
+                        if msg.role in ("user", "assistant") and hasattr(msg, "content")
+                    ]
+
             response = await self._client.generate_response(
                 user_input.text,
                 context=prompt,
+                conversation_history=conversation_history,
             )
         except Exception as err:
             _LOGGER.error("Error generating response: %s", err)

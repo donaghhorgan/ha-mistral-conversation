@@ -159,7 +159,7 @@ async def test_async_process_success():
     # The prompt should be rendered with the actual location name
     expected_context = DEFAULT_PROMPT.replace("{{ ha_name }}", "Test Home")
     mock_client.generate_response.assert_awaited_once_with(
-        "test question", context=expected_context
+        "test question", context=expected_context, conversation_history=[]
     )
 
 
@@ -274,7 +274,7 @@ async def test_async_process_with_template_error():
 
     # Verify client was called with default prompt
     mock_client.generate_response.assert_awaited_once_with(
-        "test question", context=DEFAULT_PROMPT
+        "test question", context=DEFAULT_PROMPT, conversation_history=[]
     )
 
 
@@ -452,3 +452,70 @@ async def test_conversation_history():
     assert len(chat_log.content) == 5  # system + 2 user + 2 assistant
     assert chat_log.content[-1].role == "assistant"
     assert chat_log.content[-1].content == "It's 2:30 PM"
+
+
+@pytest.mark.asyncio
+async def test_conversation_context_management():
+    """Test that conversation context is properly passed to the LLM."""
+    hass = MagicMock(spec=HomeAssistant)
+    hass.config = MagicMock()
+    hass.config.location_name = "Test Home"
+    hass.data = {}
+
+    config_entry = MagicMock(spec=ConfigEntry)
+    config_entry.data = {
+        CONF_API_KEY: "test_api_key",
+        CONF_MODEL: DEFAULT_MODEL,
+        CONF_PROMPT: DEFAULT_PROMPT,
+    }
+    config_entry.entry_id = "test_entry_id"
+
+    entity = MistralConversationEntity(hass, config_entry)
+
+    # Mock the client
+    mock_client = AsyncMock()
+    mock_client.generate_response.return_value = "response with context"
+    entity._client = mock_client
+
+    # Create conversation input with specific conversation ID
+    conversation_id = "test_context_conversation"
+    user_input = conversation.ConversationInput(
+        text="First message",
+        conversation_id=conversation_id,
+        language="en",
+        context=None,
+        device_id=None,
+        satellite_id=None,
+        agent_id=None,
+    )
+
+    # Process first message
+    await entity.async_process(user_input)
+
+    # Verify first call had no history
+    first_call_args = mock_client.generate_response.call_args
+    assert first_call_args[1]["conversation_history"] == []
+
+    # Process second message in same conversation
+    user_input2 = conversation.ConversationInput(
+        text="Second message",
+        conversation_id=conversation_id,
+        language="en",
+        context=None,
+        device_id=None,
+        satellite_id=None,
+        agent_id=None,
+    )
+
+    await entity.async_process(user_input2)
+
+    # Verify second call included conversation history
+    second_call_args = mock_client.generate_response.call_args
+    conversation_history = second_call_args[1]["conversation_history"]
+
+    # Should have user and assistant messages from first exchange
+    assert len(conversation_history) == 2
+    assert conversation_history[0]["role"] == "user"
+    assert conversation_history[0]["content"] == "First message"
+    assert conversation_history[1]["role"] == "assistant"
+    assert conversation_history[1]["content"] == "response with context"
