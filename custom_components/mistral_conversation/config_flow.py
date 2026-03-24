@@ -3,17 +3,19 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import aiohttp
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.const import CONF_LLM_HASS_API
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers import llm
 from homeassistant.helpers.selector import (
     NumberSelector,
     NumberSelectorConfig,
     NumberSelectorMode,
+    SelectOptionDict,
     SelectSelector,
     SelectSelectorConfig,
     SelectSelectorMode,
@@ -36,6 +38,9 @@ from .const import (
     DEFAULT_TEMPERATURE,
     DOMAIN,
 )
+
+if TYPE_CHECKING:
+    from types import MappingProxyType
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -186,6 +191,7 @@ class ConfigFlow(config_entries.ConfigFlow):
         )
 
     @staticmethod
+    @callback
     def async_get_options_flow(
         config_entry: config_entries.ConfigEntry,
     ) -> OptionsFlow:
@@ -212,20 +218,27 @@ class OptionsFlow(config_entries.OptionsFlow):
         self.config_entry = config_entry
         self.available_models: list[str] = []
 
-    async def async_step_init(
-        self, user_input: dict[str, Any] | None = None
-    ) -> config_entries.ConfigFlowResult:
-        """Manage the options."""
-        if user_input is not None:
-            return self.async_create_entry(title="", data=user_input)
+    @callback
+    def async_get_options_schema(
+        self, options: MappingProxyType[str, Any]
+    ) -> vol.Schema:
+        """Return the options schema."""
+        # Get available LLM APIs
+        apis: list[SelectOptionDict] = [
+            SelectOptionDict(
+                label=api.name,
+                value=api.id,
+            )
+            for api in llm.async_get_apis(self.hass)
+        ]
 
         # Fetch available models from API
         api_key = self.config_entry.data.get(CONF_API_KEY)
         if api_key:
-            self.available_models = await get_available_models(self.hass, api_key)
+            # This will be populated in async_step_init
+            self.available_models = []
 
-        # Create dynamic schema with available models
-        dynamic_schema = vol.Schema(
+        return vol.Schema(
             {
                 vol.Optional(
                     CONF_MODEL,
@@ -268,18 +281,33 @@ class OptionsFlow(config_entries.OptionsFlow):
                     CONF_PROMPT,
                     default=self.config_entry.options.get(CONF_PROMPT, DEFAULT_PROMPT),
                 ): TemplateSelector(),
-                vol.Optional(CONF_LLM_HASS_API): SelectSelector(
+                vol.Optional(
+                    CONF_LLM_HASS_API,
+                    description={"suggested_value": options.get(CONF_LLM_HASS_API)},
+                ): SelectSelector(
                     SelectSelectorConfig(
-                        options=[],
+                        options=apis,
                         mode=SelectSelectorMode.DROPDOWN,
                     )
                 ),
             }
         )
 
+    async def async_step_init(
+        self, user_input: dict[str, Any] | None = None
+    ) -> config_entries.ConfigFlowResult:
+        """Manage the options."""
+        if user_input is not None:
+            return self.async_create_entry(title="", data=user_input)
+
+        # Fetch available models from API
+        api_key = self.config_entry.data.get(CONF_API_KEY)
+        if api_key:
+            self.available_models = await get_available_models(self.hass, api_key)
+
         return self.async_show_form(
             step_id="init",
-            data_schema=dynamic_schema,
+            data_schema=self.async_get_options_schema(self.config_entry.options),
         )
 
 

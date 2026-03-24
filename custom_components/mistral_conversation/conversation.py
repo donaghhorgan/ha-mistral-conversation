@@ -119,7 +119,7 @@ class MistralConversationEntity(conversation.ConversationEntity):
         )
 
         raw_prompt = self.entry.data.get(CONF_PROMPT, DEFAULT_PROMPT)
-        llm_api = self.entry.data.get(CONF_LLM_HASS_API)
+        llm_api = self.entry.options.get(CONF_LLM_HASS_API)
 
         if llm_api:
             try:
