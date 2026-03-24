@@ -5,10 +5,12 @@ from __future__ import annotations
 import logging
 
 from homeassistant.components import conversation
+from homeassistant.components.conversation import chat_log
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_LLM_HASS_API
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady, TemplateError
+from homeassistant.helpers import chat_session as chat_session_helper
 from homeassistant.helpers import intent, template
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.util import ulid
@@ -110,6 +112,12 @@ class MistralConversationEntity(conversation.ConversationEntity):
                 conversation_id=user_input.conversation_id,
             )
 
+        # Use chat log for conversation history management
+        conversation_id = user_input.conversation_id or ulid.ulid()
+        chat_session = chat_session_helper.ChatSession(
+            conversation_id=conversation_id,
+        )
+
         raw_prompt = self.entry.data.get(CONF_PROMPT, DEFAULT_PROMPT)
         llm_api = self.entry.data.get(CONF_LLM_HASS_API)
 
@@ -159,15 +167,28 @@ class MistralConversationEntity(conversation.ConversationEntity):
             )
             return conversation.ConversationResult(
                 response=intent_response,
-                conversation_id=user_input.conversation_id,
+                conversation_id=conversation_id,
             )
 
         intent_response = intent.IntentResponse(language=user_input.language)
         intent_response.async_set_speech(response)
 
+        # Use chat log to store conversation history
+        with chat_log.async_get_chat_log(
+            self.hass, chat_session, user_input
+        ) as chat_log_instance:
+            # Add assistant response to chat log
+            chat_log_instance.async_add_assistant_content_without_tools(
+                chat_log.AssistantContent(
+                    agent_id=self.unique_id or self.entry.entry_id,
+                    content=response,
+                )
+            )
+
         return conversation.ConversationResult(
             response=intent_response,
-            conversation_id=user_input.conversation_id or ulid.ulid(),
+            conversation_id=conversation_id,
+            continue_conversation=True,
         )
 
     @property

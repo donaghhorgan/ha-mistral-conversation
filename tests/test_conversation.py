@@ -376,3 +376,79 @@ async def test_attribution():
     entity = MistralConversationEntity(hass, config_entry)
 
     assert entity.attribution == "Powered by Mistral AI"
+
+
+@pytest.mark.asyncio
+async def test_conversation_history():
+    """Test that conversation history is properly stored and managed."""
+    hass = MagicMock(spec=HomeAssistant)
+    hass.config = MagicMock()
+    hass.config.location_name = "Test Home"
+    hass.data = {}
+
+    config_entry = MagicMock(spec=ConfigEntry)
+    config_entry.data = {
+        CONF_API_KEY: "test_api_key",
+        CONF_MODEL: DEFAULT_MODEL,
+        CONF_PROMPT: DEFAULT_PROMPT,
+    }
+    config_entry.entry_id = "test_entry_id"
+
+    entity = MistralConversationEntity(hass, config_entry)
+
+    # Mock the client
+    mock_client = AsyncMock()
+    mock_client.generate_response.return_value = "test response"
+    entity._client = mock_client
+
+    # Create conversation input with specific conversation ID
+    conversation_id = "test_conversation_123"
+    user_input = conversation.ConversationInput(
+        text="Hello, how are you?",
+        conversation_id=conversation_id,
+        language="en",
+        context=None,
+        device_id=None,
+        satellite_id=None,
+        agent_id=None,
+    )
+
+    # Process the conversation
+    result = await entity.async_process(user_input)
+
+    # Verify the response
+    assert result.conversation_id == conversation_id
+    assert result.continue_conversation is True
+
+    # Check that conversation history was stored
+    chat_logs = hass.data.get("conversation_chat_logs", {})
+    assert conversation_id in chat_logs
+
+    chat_log = chat_logs[conversation_id]
+    assert len(chat_log.content) == 3  # system + user + assistant
+    assert chat_log.content[-1].role == "assistant"
+    assert chat_log.content[-1].content == "test response"
+
+    # Test second message in same conversation
+    user_input2 = conversation.ConversationInput(
+        text="What time is it?",
+        conversation_id=conversation_id,  # Same conversation ID
+        language="en",
+        context=None,
+        device_id=None,
+        satellite_id=None,
+        agent_id=None,
+    )
+
+    mock_client.generate_response.return_value = "It's 2:30 PM"
+    result2 = await entity.async_process(user_input2)
+
+    # Verify the second response
+    assert result2.conversation_id == conversation_id
+    assert result2.continue_conversation is True
+
+    # Check that conversation history was updated
+    chat_log = chat_logs[conversation_id]
+    assert len(chat_log.content) == 5  # system + 2 user + 2 assistant
+    assert chat_log.content[-1].role == "assistant"
+    assert chat_log.content[-1].content == "It's 2:30 PM"
