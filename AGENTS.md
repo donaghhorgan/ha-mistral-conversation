@@ -38,6 +38,18 @@ uv run pytest
 uv run ruff check .
 ```
 
+Dev dependencies (testing, linting, etc.) should use the `--group dev` flag:
+
+```bash
+# Add development dependencies
+uv add --group dev package-name
+
+# Example: Add pytest with coverage
+uv add --group dev pytest pytest-cov
+```
+
+This keeps production dependencies clean and separates development tools.
+
 ### Linting
 
 Run linting manually:
