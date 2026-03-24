@@ -154,24 +154,57 @@ class MistralConversationEntity(conversation.ConversationEntity):
         _LOGGER.debug("User input: %s", user_input.text)
 
         try:
-            # Get conversation history for context
-            conversation_history = []
-            if conversation_id:
-                existing_chat_logs = self.hass.data.get("conversation_chat_logs", {})
-                if conversation_id in existing_chat_logs:
-                    existing_chat_log = existing_chat_logs[conversation_id]
-                    # Extract user and assistant messages (skip system messages)
-                    conversation_history = [
-                        {"role": msg.role, "content": msg.content}
-                        for msg in existing_chat_log.content
-                        if msg.role in ("user", "assistant") and hasattr(msg, "content")
-                    ]
+            # Use Home Assistant's recommended LLM API integration
+            with chat_log.async_get_chat_log(
+                self.hass, chat_session, user_input
+            ) as chat_log_instance:
+                # Provide LLM data using the standard Home Assistant method
+                try:
+                    await chat_log_instance.async_provide_llm_data(
+                        user_input.as_llm_context("mistral_conversation"),
+                        self.entry.options.get(CONF_LLM_HASS_API),
+                        self.entry.options.get(CONF_PROMPT),
+                        user_input.extra_system_prompt,
+                    )
+                except conversation.ConverseError as err:
+                    return err.as_conversation_result()
 
-            response = await self._client.generate_response(
-                user_input.text,
-                context=prompt,
-                conversation_history=conversation_history,
-            )
+                # Extract conversation history from chat log for Mistral API
+                conversation_history = []
+                for content in chat_log_instance.content:
+                    if content.role in ("user", "assistant") and hasattr(
+                        content, "content"
+                    ):
+                        conversation_history.append(
+                            {"role": content.role, "content": content.content}
+                        )
+
+                # Generate response from Mistral AI
+                response = await self._client.generate_response(
+                    user_input.text,
+                    context=prompt,
+                    conversation_history=conversation_history,
+                )
+
+                # Add assistant response to chat log
+                chat_log_instance.async_add_assistant_content_without_tools(
+                    chat_log.AssistantContent(
+                        agent_id=self.unique_id or self.entry.entry_id,
+                        content=response,
+                    )
+                )
+
+                # Store conversation ID for reference
+                _LOGGER.debug("Conversation %s updated with response", conversation_id)
+
+                intent_response = intent.IntentResponse(language=user_input.language)
+                intent_response.async_set_speech(response)
+
+                return conversation.ConversationResult(
+                    response=intent_response,
+                    conversation_id=conversation_id,
+                    continue_conversation=True,
+                )
         except Exception as err:
             _LOGGER.error("Error generating response: %s", err)
             intent_response = intent.IntentResponse(language=user_input.language)
@@ -182,21 +215,6 @@ class MistralConversationEntity(conversation.ConversationEntity):
             return conversation.ConversationResult(
                 response=intent_response,
                 conversation_id=conversation_id,
-            )
-
-        intent_response = intent.IntentResponse(language=user_input.language)
-        intent_response.async_set_speech(response)
-
-        # Use chat log to store conversation history
-        with chat_log.async_get_chat_log(
-            self.hass, chat_session, user_input
-        ) as chat_log_instance:
-            # Add assistant response to chat log
-            chat_log_instance.async_add_assistant_content_without_tools(
-                chat_log.AssistantContent(
-                    agent_id=self.unique_id or self.entry.entry_id,
-                    content=response,
-                )
             )
 
         return conversation.ConversationResult(

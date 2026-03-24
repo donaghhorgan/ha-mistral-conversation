@@ -37,6 +37,7 @@ async def test_async_setup_entry():
         CONF_MODEL: DEFAULT_MODEL,
     }
     config_entry.entry_id = "test_entry_id"
+    config_entry.options = {}
 
     mock_add_entities = MagicMock()
 
@@ -58,6 +59,7 @@ async def test_conversation_entity_initialization():
         CONF_MODEL: "test_model",
     }
     config_entry.entry_id = "test_entry_id"
+    config_entry.options = {}
 
     entity = MistralConversationEntity(hass, config_entry)
 
@@ -76,6 +78,7 @@ async def test_supported_languages():
         CONF_MODEL: DEFAULT_MODEL,
     }
     config_entry.entry_id = "test_entry_id"
+    config_entry.options = {}
 
     entity = MistralConversationEntity(hass, config_entry)
 
@@ -95,6 +98,7 @@ async def test_async_added_to_hass():
         CONF_MAX_TOKENS: DEFAULT_MAX_TOKENS,
     }
     config_entry.entry_id = "test_entry_id"
+    config_entry.options = {}
 
     entity = MistralConversationEntity(hass, config_entry)
 
@@ -131,6 +135,7 @@ async def test_async_process_success():
         CONF_PROMPT: DEFAULT_PROMPT,
     }
     config_entry.entry_id = "test_entry_id"
+    config_entry.options = {}
 
     entity = MistralConversationEntity(hass, config_entry)
 
@@ -159,7 +164,9 @@ async def test_async_process_success():
     # The prompt should be rendered with the actual location name
     expected_context = DEFAULT_PROMPT.replace("{{ ha_name }}", "Test Home")
     mock_client.generate_response.assert_awaited_once_with(
-        "test question", context=expected_context, conversation_history=[]
+        "test question",
+        context=expected_context,
+        conversation_history=[{"role": "user", "content": "test question"}],
     )
 
 
@@ -173,6 +180,7 @@ async def test_async_process_client_not_initialized():
         CONF_MODEL: DEFAULT_MODEL,
     }
     config_entry.entry_id = "test_entry_id"
+    config_entry.options = {}
 
     entity = MistralConversationEntity(hass, config_entry)
     entity._client = None
@@ -207,6 +215,7 @@ async def test_async_process_with_llm_api():
         CONF_LLM_HASS_API: "test_llm",
     }
     config_entry.entry_id = "test_entry_id"
+    config_entry.options = {}
 
     entity = MistralConversationEntity(hass, config_entry)
 
@@ -247,6 +256,7 @@ async def test_async_process_with_template_error():
         CONF_PROMPT: "{{ invalid_template_syntax ",
     }
     config_entry.entry_id = "test_entry_id"
+    config_entry.options = {}
 
     entity = MistralConversationEntity(hass, config_entry)
 
@@ -274,7 +284,9 @@ async def test_async_process_with_template_error():
 
     # Verify client was called with default prompt
     mock_client.generate_response.assert_awaited_once_with(
-        "test question", context=DEFAULT_PROMPT, conversation_history=[]
+        "test question",
+        context=DEFAULT_PROMPT,
+        conversation_history=[{"role": "user", "content": "test question"}],
     )
 
 
@@ -293,6 +305,7 @@ async def test_async_process_with_client_error():
         CONF_PROMPT: DEFAULT_PROMPT,
     }
     config_entry.entry_id = "test_entry_id"
+    config_entry.options = {}
 
     entity = MistralConversationEntity(hass, config_entry)
 
@@ -335,6 +348,7 @@ async def test_async_process_without_conversation_id():
         CONF_PROMPT: DEFAULT_PROMPT,
     }
     config_entry.entry_id = "test_entry_id"
+    config_entry.options = {}
 
     entity = MistralConversationEntity(hass, config_entry)
 
@@ -372,6 +386,7 @@ async def test_attribution():
         CONF_MODEL: DEFAULT_MODEL,
     }
     config_entry.entry_id = "test_entry_id"
+    config_entry.options = {}
 
     entity = MistralConversationEntity(hass, config_entry)
 
@@ -393,6 +408,7 @@ async def test_conversation_history():
         CONF_PROMPT: DEFAULT_PROMPT,
     }
     config_entry.entry_id = "test_entry_id"
+    config_entry.options = {}
 
     entity = MistralConversationEntity(hass, config_entry)
 
@@ -469,6 +485,7 @@ async def test_conversation_context_management():
         CONF_PROMPT: DEFAULT_PROMPT,
     }
     config_entry.entry_id = "test_entry_id"
+    config_entry.options = {}
 
     entity = MistralConversationEntity(hass, config_entry)
 
@@ -492,9 +509,11 @@ async def test_conversation_context_management():
     # Process first message
     await entity.async_process(user_input)
 
-    # Verify first call had no history
+    # Verify first call included user message in history
     first_call_args = mock_client.generate_response.call_args
-    assert first_call_args[1]["conversation_history"] == []
+    assert first_call_args[1]["conversation_history"] == [
+        {"role": "user", "content": "First message"}
+    ]
 
     # Process second message in same conversation
     user_input2 = conversation.ConversationInput(
@@ -513,9 +532,11 @@ async def test_conversation_context_management():
     second_call_args = mock_client.generate_response.call_args
     conversation_history = second_call_args[1]["conversation_history"]
 
-    # Should have user and assistant messages from first exchange
-    assert len(conversation_history) == 2
+    # Should have user1, assistant1, and user2 messages from conversation
+    assert len(conversation_history) == 3
     assert conversation_history[0]["role"] == "user"
     assert conversation_history[0]["content"] == "First message"
     assert conversation_history[1]["role"] == "assistant"
     assert conversation_history[1]["content"] == "response with context"
+    assert conversation_history[2]["role"] == "user"
+    assert conversation_history[2]["content"] == "Second message"
