@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+import aiohttp
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.const import CONF_LLM_HASS_API
@@ -83,14 +84,35 @@ OPTIONS_SCHEMA = vol.Schema(
 
 async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str, Any]:
     """Validate the user input allows us to connect."""
-    client = MistralAIClient(
-        hass,
-        data[CONF_API_KEY],
-        data.get(CONF_MODEL, DEFAULT_MODEL),
-    )
+    if not data.get(CONF_API_KEY):
+        raise InvalidAuth("API key is required")
 
-    if not await client.test_connection():
-        raise InvalidAuth
+    try:
+        client = MistralAIClient(
+            hass,
+            data[CONF_API_KEY],
+            data.get(CONF_MODEL, DEFAULT_MODEL),
+        )
+
+        if not await client.test_connection():
+            raise CannotConnect(
+                "Failed to connect to Mistral AI API. Please check your API key and network connection."
+            ) from None
+
+    except aiohttp.ClientError as err:
+        if "timeout" in str(err).lower():
+            raise CannotConnect(
+                "Connection timed out. Please check your network connection."
+            ) from err
+        elif "ssl" in str(err).lower():
+            raise CannotConnect(
+                "SSL certificate error. Please check your system date/time and SSL certificates."
+            ) from err
+        else:
+            raise CannotConnect(f"Network error: {str(err)}") from err
+    except Exception as err:
+        _LOGGER.error("Unexpected error during validation: %s", err)
+        raise CannotConnect(f"Unexpected error: {str(err)}") from err
 
     # Return info that you want to store in the config entry.
     return {"title": f"Mistral AI ({data.get(CONF_MODEL, DEFAULT_MODEL)})"}
