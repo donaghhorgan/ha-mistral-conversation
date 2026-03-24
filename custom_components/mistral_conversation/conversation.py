@@ -73,6 +73,43 @@ class MistralConversationEntity(conversation.ConversationEntity):
         if self._client is None:
             raise ConfigEntryNotReady("Mistral AI client not initialized")
 
+        # Validate user input
+        if not user_input.text:
+            intent_response = intent.IntentResponse(language=user_input.language)
+            intent_response.async_set_error(
+                intent.IntentResponseErrorCode.UNKNOWN,
+                "Sorry, I received empty input. Please provide some text to process.",
+            )
+            return conversation.ConversationResult(
+                response=intent_response,
+                conversation_id=user_input.conversation_id,
+            )
+
+        if not isinstance(user_input.text, str):
+            intent_response = intent.IntentResponse(language=user_input.language)
+            intent_response.async_set_error(
+                intent.IntentResponseErrorCode.UNKNOWN,
+                "Sorry, I received invalid input format. Please provide text input.",
+            )
+            return conversation.ConversationResult(
+                response=intent_response,
+                conversation_id=user_input.conversation_id,
+            )
+
+        # Validate conversation ID if provided
+        if user_input.conversation_id is not None and not isinstance(
+            user_input.conversation_id, str
+        ):
+            intent_response = intent.IntentResponse(language=user_input.language)
+            intent_response.async_set_error(
+                intent.IntentResponseErrorCode.UNKNOWN,
+                "Sorry, there's an issue with the conversation ID.",
+            )
+            return conversation.ConversationResult(
+                response=intent_response,
+                conversation_id=user_input.conversation_id,
+            )
+
         raw_prompt = self.entry.data.get(CONF_PROMPT, DEFAULT_PROMPT)
         llm_api = self.entry.data.get(CONF_LLM_HASS_API)
 

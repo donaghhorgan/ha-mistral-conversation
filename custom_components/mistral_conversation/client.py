@@ -162,6 +162,35 @@ class MistralAIClient:
         max_tokens: int | None = None,
     ) -> MistralResponse | AsyncIterator[MistralResponse]:
         """Send a chat completion request to Mistral AI API."""
+        # Validate messages
+        if not messages:
+            raise ValueError("Messages list cannot be empty")
+
+        if not isinstance(messages, list):
+            raise ValueError("Messages must be a list")
+
+        for i, message in enumerate(messages):
+            if not isinstance(message, dict):
+                raise ValueError(f"Message {i} must be a dictionary")
+            if "role" not in message or not isinstance(message["role"], str):
+                raise ValueError(f"Message {i} must have a string 'role' field")
+            if "content" not in message or not isinstance(message["content"], str):
+                raise ValueError(f"Message {i} must have a string 'content' field")
+
+        # Validate temperature
+        if temperature is not None:
+            if not isinstance(temperature, (int, float)):
+                raise ValueError("Temperature must be a number")
+            if not (0.0 <= temperature <= 2.0):
+                raise ValueError("Temperature must be between 0.0 and 2.0")
+
+        # Validate max_tokens
+        if max_tokens is not None:
+            if not isinstance(max_tokens, int):
+                raise ValueError("Max tokens must be an integer")
+            if not (max_tokens >= 1):
+                raise ValueError("Max tokens must be at least 1")
+
         payload = {
             "model": self._model,
             "messages": messages,
@@ -269,6 +298,21 @@ class MistralAIClient:
         context: str | None = None,
     ) -> str:
         """Generate a response for the given prompt."""
+        # Validate prompt
+        if not prompt:
+            raise ValueError("Prompt cannot be empty")
+
+        if not isinstance(prompt, str):
+            raise ValueError("Prompt must be a string")
+
+        # Validate context if provided
+        if context is not None and not isinstance(context, str):
+            raise ValueError("Context must be a string")
+
+        # Validate conversation_id if provided
+        if conversation_id is not None and not isinstance(conversation_id, str):
+            raise ValueError("Conversation ID must be a string")
+
         messages: list[MistralMessage] = []
 
         # Add system context if provided

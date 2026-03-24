@@ -84,8 +84,42 @@ OPTIONS_SCHEMA = vol.Schema(
 
 async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str, Any]:
     """Validate the user input allows us to connect."""
-    if not data.get(CONF_API_KEY):
+    # Validate API key
+    api_key = data.get(CONF_API_KEY)
+    if not api_key:
         raise InvalidAuth("API key is required")
+
+    if not isinstance(api_key, str):
+        raise InvalidAuth("API key must be a string")
+
+    # Validate model
+    model = data.get(CONF_MODEL, DEFAULT_MODEL)
+    if not isinstance(model, str):
+        raise InvalidAuth("Model must be a string")
+
+    if not model.strip():
+        raise InvalidAuth("Model cannot be empty")
+
+    # Validate temperature if provided
+    temperature = data.get(CONF_TEMPERATURE, DEFAULT_TEMPERATURE)
+    if temperature is not None:
+        if not isinstance(temperature, (int, float)):
+            raise InvalidAuth("Temperature must be a number")
+        if not (0.0 <= temperature <= 2.0):
+            raise InvalidAuth("Temperature must be between 0.0 and 2.0")
+
+    # Validate max_tokens if provided
+    max_tokens = data.get(CONF_MAX_TOKENS, DEFAULT_MAX_TOKENS)
+    if max_tokens is not None:
+        if not isinstance(max_tokens, int):
+            raise InvalidAuth("Max tokens must be an integer")
+        if not (max_tokens >= 1):
+            raise InvalidAuth("Max tokens must be at least 1")
+
+    # Validate prompt if provided
+    prompt = data.get(CONF_PROMPT, DEFAULT_PROMPT)
+    if prompt is not None and not isinstance(prompt, str):
+        raise InvalidAuth("Prompt must be a string")
 
     try:
         client = MistralAIClient(
