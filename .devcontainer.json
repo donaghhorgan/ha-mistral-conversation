@@ -1,5 +1,5 @@
 {
-    "image": "python:3.12",
+    "image": "python:3.13",
     "features": {
         "ghcr.io/devcontainers/features/common-utils:2": {
             "installZsh": true,
@@ -9,7 +9,7 @@
         },
         "ghcr.io/devcontainers-extra/features/uv:1": {},
         "ghcr.io/devcontainers-extra/features/zsh-plugins:0": {
-            "plugins": "uv git python pip"
+            "plugins": "uv dotenv git python pip"
         },
         "ghcr.io/devcontainers/features/git:1": {
             "ppa": true,
@@ -20,15 +20,14 @@
     "customizations": {
         "vscode": {
             "extensions": [
+                "astral-sh.type",
                 "charliermarsh.ruff",
                 "DavidAnson.vscode-markdownlint",
                 "eamodio.gitlens",
-                "GitHub.copilot",
-                "GitHub.copilot-chat",
+
                 "github.vscode-github-actions",
                 "home-assistant.vscode-home-assistant",
                 "ms-python.debugpy",
-                "ms-python.mypy-type-checker",
                 "ms-python.python",
                 "ms-vscode.vscode-json",
                 "njpwerner.autodocstring",
@@ -52,7 +51,7 @@
                 "ruff.enable": true,
                 "ruff.organizeImports": true,
                 "ruff.fixAll": true,
-                "mypy-type-checker.importStrategy": "fromEnvironment",
+
                 "git.enableCommitSigning": true,
                 "git.autofetch": true,
                 "gitlens.codeLens.enabled": true
@@ -62,7 +61,6 @@
     "containerUser": "vscode",
     "remoteUser": "vscode",
     "mounts": [
-        "source=${localEnv:HOME}/.ssh,target=/home/vscode/.ssh,type=bind,consistency=cached",
-        "source=${localEnv:HOME}/.gitconfig,target=/home/vscode/.gitconfig,type=bind,consistency=cached"
+        "source=${localEnv:HOME}/.ssh,target=/home/vscode/.ssh,type=bind,consistency=cached"
     ]
 }

@@ -20,14 +20,6 @@ repos:
         name: Ruff Lint
         args: [--fix]
 
-  # MyPy for type checking
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.14.0
-    hooks:
-      - id: mypy
-        name: MyPy Type Check
-        additional_dependencies: [types-requests]
-
   # Bandit for security linting
   - repo: https://github.com/PyCQA/bandit
     rev: 1.8.6
@@ -73,6 +65,13 @@ repos:
         language: system
         files: ^(pyproject\.toml|custom_components/.*/manifest\.json)$
         pass_filenames: false
+      - id: ty-check
+        name: Ty Type Check
+        entry: uv run ty check custom_components/ scripts/
+        language: system
+        types: [python]
+        pass_filenames: false
+        require_serial: true
 
   # Additional general hooks
   - repo: https://github.com/pre-commit/pre-commit-hooks

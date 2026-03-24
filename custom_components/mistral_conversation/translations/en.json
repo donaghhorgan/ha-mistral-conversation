@@ -1,0 +1,46 @@
+{
+    "config": {
+        "step": {
+            "user": {
+                "description": "Please enter your Mistral AI API key to set up the conversation agent.",
+                "data": {
+                    "api_key": "API Key"
+                }
+            }
+        },
+        "error": {
+            "cannot_connect": "Failed to connect to Mistral AI API. Please check your internet connection and try again.",
+            "invalid_auth": "Invalid API key. Please check your Mistral AI API key and try again.",
+            "unknown": "An unexpected error occurred. Please try again."
+        },
+        "abort": {
+            "already_configured": "Mistral AI Conversation is already configured."
+        }
+    },
+    "options": {
+        "step": {
+            "init": {
+                "description": "Configure your Mistral AI conversation agent settings.",
+                "data": {
+                    "model": "Model",
+                    "temperature": "Temperature (creativity level)",
+                    "max_tokens": "Maximum tokens per response",
+                    "prompt": "System prompt template",
+                    "llm_hass_api": "Home Assistant LLM API (optional)"
+                }
+            }
+        }
+    },
+    "services": {
+        "process": {
+            "name": "Process conversation",
+            "description": "Process a conversation with Mistral AI",
+            "fields": {
+                "text": {
+                    "name": "Text",
+                    "description": "The text to process"
+                }
+            }
+        }
+    }
+}

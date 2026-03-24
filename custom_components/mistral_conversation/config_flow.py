@@ -1,0 +1,170 @@
+"""Config flow for Mistral AI Conversation integration."""
+
+from __future__ import annotations
+
+import logging
+from typing import Any
+
+import voluptuous as vol
+from homeassistant import config_entries
+from homeassistant.const import CONF_LLM_HASS_API
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.selector import (
+    NumberSelector,
+    NumberSelectorConfig,
+    NumberSelectorMode,
+    SelectSelector,
+    SelectSelectorConfig,
+    SelectSelectorMode,
+    TemplateSelector,
+    TextSelector,
+    TextSelectorConfig,
+    TextSelectorType,
+)
+
+from .client import MistralAIClient
+from .const import (
+    AVAILABLE_MODELS,
+    CONF_API_KEY,
+    CONF_MAX_TOKENS,
+    CONF_MODEL,
+    CONF_PROMPT,
+    CONF_TEMPERATURE,
+    DEFAULT_MAX_TOKENS,
+    DEFAULT_MODEL,
+    DEFAULT_PROMPT,
+    DEFAULT_TEMPERATURE,
+    DOMAIN,
+)
+
+_LOGGER = logging.getLogger(__name__)
+
+STEP_USER_DATA_SCHEMA = vol.Schema(
+    {
+        vol.Required(CONF_API_KEY): TextSelector(
+            TextSelectorConfig(type=TextSelectorType.PASSWORD, autocomplete="off")
+        ),
+    }
+)
+
+OPTIONS_SCHEMA = vol.Schema(
+    {
+        vol.Optional(CONF_MODEL, default=DEFAULT_MODEL): SelectSelector(
+            SelectSelectorConfig(
+                options=AVAILABLE_MODELS,
+                mode=SelectSelectorMode.DROPDOWN,
+            )
+        ),
+        vol.Optional(CONF_TEMPERATURE, default=DEFAULT_TEMPERATURE): NumberSelector(
+            NumberSelectorConfig(
+                min=0.0,
+                max=2.0,
+                step=0.1,
+                mode=NumberSelectorMode.SLIDER,
+            )
+        ),
+        vol.Optional(CONF_MAX_TOKENS, default=DEFAULT_MAX_TOKENS): NumberSelector(
+            NumberSelectorConfig(
+                min=1,
+                max=4000,
+                step=1,
+                mode=NumberSelectorMode.BOX,
+            )
+        ),
+        vol.Optional(CONF_PROMPT, default=DEFAULT_PROMPT): TemplateSelector(),
+        vol.Optional(CONF_LLM_HASS_API): SelectSelector(
+            SelectSelectorConfig(
+                options=[],
+                mode=SelectSelectorMode.DROPDOWN,
+            )
+        ),
+    }
+)
+
+
+async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str, Any]:
+    """Validate the user input allows us to connect."""
+    client = MistralAIClient(
+        hass,
+        data[CONF_API_KEY],
+        data.get(CONF_MODEL, DEFAULT_MODEL),
+    )
+
+    if not await client.test_connection():
+        raise InvalidAuth
+
+    # Return info that you want to store in the config entry.
+    return {"title": f"Mistral AI ({data.get(CONF_MODEL, DEFAULT_MODEL)})"}
+
+
+class ConfigFlow(config_entries.ConfigFlow):
+    """Handle a config flow for Mistral AI Conversation."""
+
+    VERSION = 1
+    DOMAIN = DOMAIN
+
+    async def async_step_user(
+        self, user_input: dict[str, Any] | None = None
+    ) -> config_entries.ConfigFlowResult:
+        """Handle the initial step."""
+        if user_input is None:
+            return self.async_show_form(
+                step_id="user", data_schema=STEP_USER_DATA_SCHEMA
+            )
+
+        errors = {}
+
+        try:
+            info = await validate_input(self.hass, user_input)
+        except CannotConnect:
+            errors["base"] = "cannot_connect"
+        except InvalidAuth:
+            errors["base"] = "invalid_auth"
+        except Exception:  # pylint: disable=broad-except
+            _LOGGER.exception("Unexpected exception")
+            errors["base"] = "unknown"
+        else:
+            return self.async_create_entry(title=info["title"], data=user_input)
+
+        return self.async_show_form(
+            step_id="user", data_schema=STEP_USER_DATA_SCHEMA, errors=errors
+        )
+
+    @staticmethod
+    def async_get_options_flow(
+        config_entry: config_entries.ConfigEntry,
+    ) -> OptionsFlow:
+        """Create the options flow."""
+        return OptionsFlow(config_entry)
+
+
+class OptionsFlow(config_entries.OptionsFlow):
+    """Mistral AI config flow options handler."""
+
+    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
+        """Initialize options flow."""
+        self.config_entry = config_entry
+
+    async def async_step_init(
+        self, user_input: dict[str, Any] | None = None
+    ) -> config_entries.ConfigFlowResult:
+        """Manage the options."""
+        if user_input is not None:
+            return self.async_create_entry(title="", data=user_input)
+
+        schema = self.add_suggested_values_to_schema(
+            OPTIONS_SCHEMA, self.config_entry.options
+        )
+
+        return self.async_show_form(
+            step_id="init",
+            data_schema=schema,
+        )
+
+
+class CannotConnect(Exception):
+    """Error to indicate we cannot connect."""
+
+
+class InvalidAuth(Exception):
+    """Error to indicate there is invalid auth."""

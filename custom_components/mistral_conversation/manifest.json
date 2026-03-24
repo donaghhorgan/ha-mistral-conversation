@@ -1,0 +1,18 @@
+{
+    "domain": "mistral_conversation",
+    "name": "Mistral AI Conversation",
+    "version": "1.0.0",
+    "documentation": "https://github.com/donaghhorgan/ha-mistral-conversation",
+    "issue_tracker": "https://github.com/donaghhorgan/ha-mistral-conversation/issues",
+    "dependencies": [],
+    "codeowners": [
+        "@donaghhorgan"
+    ],
+    "requirements": [
+        "aiohttp>=3.8.0",
+        "mistralai>=2.0.0"
+    ],
+    "config_flow": true,
+    "integration_type": "service",
+    "iot_class": "cloud_polling"
+}

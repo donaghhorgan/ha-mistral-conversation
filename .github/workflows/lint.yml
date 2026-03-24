@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.12"]
+        python-version: ["3.13"]
 
     steps:
       - uses: actions/checkout@v4
@@ -50,9 +50,9 @@ jobs:
         run: |
           uv run pymarkdown scan *.md
 
-      - name: Run MyPy (Type checking)
+      - name: Run Ty (Type checking)
         run: |
-          uv run mypy .
+          uv run ty .
 
       - name: Run Bandit (Security linting)
         run: |
