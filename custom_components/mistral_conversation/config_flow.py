@@ -159,11 +159,10 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
     return {"title": f"Mistral AI ({data.get(CONF_MODEL, DEFAULT_MODEL)})"}
 
 
-class ConfigFlow(config_entries.ConfigFlow):
+class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call-arg]
     """Handle a config flow for Mistral AI Conversation."""
 
     VERSION = 1
-    DOMAIN = DOMAIN
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
