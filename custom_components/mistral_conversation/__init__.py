@@ -11,6 +11,11 @@ from .const import DOMAIN
 PLATFORMS: list[Platform] = [Platform.CONVERSATION]
 
 
+async def async_setup(hass: HomeAssistant, config: dict) -> bool:
+    """Set up the Mistral AI Conversation component."""
+    return True
+
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Mistral AI Conversation from a config entry."""
     hass.data.setdefault(DOMAIN, {})

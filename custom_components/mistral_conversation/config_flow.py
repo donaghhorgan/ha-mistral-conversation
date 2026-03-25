@@ -10,6 +10,7 @@ import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.const import CONF_LLM_HASS_API
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import llm
 from homeassistant.helpers.selector import (
     NumberSelector,
@@ -312,9 +313,9 @@ class OptionsFlow(config_entries.OptionsFlow):
         )
 
 
-class CannotConnect(Exception):
+class CannotConnect(HomeAssistantError):
     """Error to indicate we cannot connect."""
 
 
-class InvalidAuth(Exception):
+class InvalidAuth(HomeAssistantError):
     """Error to indicate there is invalid auth."""
