@@ -9,7 +9,7 @@ import aiohttp
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.const import CONF_LLM_HASS_API
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import llm
 from homeassistant.helpers.selector import (
@@ -192,7 +192,8 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call
         )
 
     @staticmethod
-    @callback
+    @staticmethod
+    @config_entries.callback
     def async_get_options_flow(
         config_entry: config_entries.ConfigEntry,
     ) -> OptionsFlow:
@@ -219,7 +220,7 @@ class OptionsFlow(config_entries.OptionsFlow):
         self.config_entry = config_entry
         self.available_models: list[str] = []
 
-    @callback
+    @config_entries.callback
     def async_get_options_schema(
         self, options: MappingProxyType[str, Any]
     ) -> vol.Schema:
