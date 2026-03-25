@@ -121,19 +121,27 @@ class MistralConversationEntity(conversation.ConversationEntity):
         raw_prompt = self.entry.data.get(CONF_PROMPT, DEFAULT_PROMPT)
         llm_api = self.entry.options.get(CONF_LLM_HASS_API)
 
+        tools = None
         if llm_api:
             try:
                 llm_api = self.hass.data["llm"][llm_api]
-                # Future: implement tool support
-                # tools = [
-                #     {
-                #         "type": "function",
-                #         "function": tool.to_openai_function(),
-                #     }
-                #     for tool in llm_api.tools
-                # ]
+                # Format tools for Mistral AI API
+                tools = [
+                    {
+                        "type": "function",
+                        "function": {
+                            "name": tool.name,
+                            "description": tool.description,
+                            "parameters": tool.parameters,
+                        },
+                    }
+                    for tool in llm_api.tools
+                ]
             except KeyError:
                 _LOGGER.error("LLM API %s not found", llm_api)
+            except Exception as err:
+                _LOGGER.error("Error formatting tools: %s", err)
+                tools = None
 
         if raw_prompt:
             try:
@@ -184,10 +192,11 @@ class MistralConversationEntity(conversation.ConversationEntity):
                     user_input.text,
                     context=prompt,
                     conversation_history=conversation_history,
+                    tools=tools,
                 )
 
                 # Add assistant response to chat log
-                chat_log_instance.async_add_assistant_content_without_tools(
+                chat_log_instance.async_add_assistant_content(
                     chat_log.AssistantContent(
                         agent_id=self.unique_id or self.entry.entry_id,
                         content=response,

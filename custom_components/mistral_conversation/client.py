@@ -160,6 +160,7 @@ class MistralAIClient:
         stream: bool = False,
         temperature: float | None = None,
         max_tokens: int | None = None,
+        tools: list[dict[str, Any]] | None = None,
     ) -> MistralResponse | AsyncIterator[MistralResponse]:
         """Send a chat completion request to Mistral AI API."""
         # Validate messages
@@ -198,6 +199,10 @@ class MistralAIClient:
             "max_tokens": max_tokens or self._max_tokens,
             "stream": stream,
         }
+
+        # Add tools to payload if provided
+        if tools is not None:
+            payload["tools"] = tools
 
         headers = {
             "Authorization": f"Bearer {self._api_key}",
@@ -297,9 +302,10 @@ class MistralAIClient:
         conversation_id: str | None = None,
         context: str | None = None,
         conversation_history: list[dict[str, str]] | None = None,
+        tools: list[dict[str, Any]] | None = None,
         max_context_tokens: int = 4096,
     ) -> str:
-        """Generate a response for the given prompt with conversation history."""
+        """Generate a response for the given prompt with conversation history and tools."""
         # Validate prompt
         if not prompt:
             raise ValueError("Prompt cannot be empty")
@@ -328,6 +334,18 @@ class MistralAIClient:
                     raise ValueError(
                         "Each history message must have 'role' and 'content'"
                     )
+
+        # Validate tools if provided
+        if tools is not None:
+            if not isinstance(tools, list):
+                raise ValueError("Tools must be a list")
+            for tool in tools:
+                if not isinstance(tool, dict):
+                    raise ValueError("Each tool must be a dictionary")
+                if "type" not in tool:
+                    raise ValueError("Each tool must have a 'type' field")
+                if tool["type"] == "function" and "function" not in tool:
+                    raise ValueError("Function tools must have a 'function' field")
 
         messages: list[MistralMessage] = []
 
@@ -362,7 +380,7 @@ class MistralAIClient:
         try:
             # Cast messages to the expected type for chat_completion
             messages_list = [dict(msg) for msg in messages]
-            response = await self.chat_completion(messages_list)
+            response = await self.chat_completion(messages_list, tools=tools)
 
             # Ensure response is a dict, not an AsyncIterator
             if not isinstance(response, dict):

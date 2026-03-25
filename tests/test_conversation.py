@@ -167,6 +167,7 @@ async def test_async_process_success():
         "test question",
         context=expected_context,
         conversation_history=[{"role": "user", "content": "test question"}],
+        tools=None,
     )
 
 
@@ -287,6 +288,7 @@ async def test_async_process_with_template_error():
         "test question",
         context=DEFAULT_PROMPT,
         conversation_history=[{"role": "user", "content": "test question"}],
+        tools=None,
     )
 
 
