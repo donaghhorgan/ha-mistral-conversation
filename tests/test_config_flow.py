@@ -24,16 +24,18 @@ async def test_validate_input_success():
     data = {CONF_API_KEY: "test_api_key"}
 
     with patch(
-        "custom_components.mistral_conversation.config_flow.MistralAIClient"
+        "custom_components.mistral_conversation.config_flow.Mistral"
     ) as mock_client_class:
         mock_client = AsyncMock()
-        mock_client.test_connection.return_value = True
+        mock_models_response = AsyncMock()
+        mock_models_response.data = [MagicMock(id="model1")]
+        mock_client.list_models.return_value = mock_models_response
         mock_client_class.return_value = mock_client
 
         result = await validate_input(hass, data)
 
         assert result == {"title": f"Mistral AI ({DEFAULT_MODEL})"}
-        mock_client.test_connection.assert_awaited_once()
+        mock_client.list_models.assert_awaited_once()
 
 
 @pytest.mark.asyncio
@@ -55,10 +57,10 @@ async def test_validate_input_cannot_connect():
     data = {CONF_API_KEY: "test_api_key"}
 
     with patch(
-        "custom_components.mistral_conversation.config_flow.MistralAIClient"
+        "custom_components.mistral_conversation.config_flow.Mistral"
     ) as mock_client_class:
         mock_client = AsyncMock()
-        mock_client.test_connection.return_value = False
+        mock_client.list_models.side_effect = Exception("Connection failed")
         mock_client_class.return_value = mock_client
 
         with pytest.raises(Exception) as exc_info:
@@ -129,13 +131,16 @@ async def test_get_available_models():
     api_key = "test_api_key"
 
     with patch(
-        "custom_components.mistral_conversation.config_flow.MistralAIClient"
+        "custom_components.mistral_conversation.config_flow.Mistral"
     ) as mock_client_class:
         mock_client = AsyncMock()
-        mock_client.get_available_models.return_value = [
-            {"id": "model1"},
-            {"id": "model2"},
-        ]
+        mock_model1 = MagicMock()
+        mock_model1.id = "model1"
+        mock_model2 = MagicMock()
+        mock_model2.id = "model2"
+        mock_models_response = AsyncMock()
+        mock_models_response.data = [mock_model1, mock_model2]
+        mock_client.list_models.return_value = mock_models_response
         mock_client_class.return_value = mock_client
 
         models = await get_available_models(hass, api_key)
@@ -149,10 +154,10 @@ async def test_get_available_models_error():
     api_key = "test_api_key"
 
     with patch(
-        "custom_components.mistral_conversation.config_flow.MistralAIClient"
+        "custom_components.mistral_conversation.config_flow.Mistral"
     ) as mock_client_class:
         mock_client = AsyncMock()
-        mock_client.get_available_models.side_effect = Exception("API error")
+        mock_client.list_models.side_effect = Exception("API error")
         mock_client_class.return_value = mock_client
 
         models = await get_available_models(hass, api_key)

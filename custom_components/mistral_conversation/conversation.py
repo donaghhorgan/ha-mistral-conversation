@@ -14,8 +14,8 @@ from homeassistant.helpers import chat_session as chat_session_helper
 from homeassistant.helpers import intent, template
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.util import ulid
+from mistralai.client import Mistral
 
-from .client import MistralAIClient
 from .const import (
     CONF_API_KEY,
     CONF_MAX_TOKENS,
@@ -48,7 +48,7 @@ class MistralConversationEntity(conversation.ConversationEntity):
         """Initialize the agent."""
         self.hass = hass
         self.entry = entry
-        self._client: MistralAIClient | None = None
+        self._client: Mistral | None = None
         self._attr_name = f"Mistral AI ({entry.data[CONF_MODEL]})"
         self._attr_unique_id = entry.entry_id
 
@@ -60,13 +60,7 @@ class MistralConversationEntity(conversation.ConversationEntity):
     async def async_added_to_hass(self) -> None:
         """When entity is added to hass."""
         await super().async_added_to_hass()
-        self._client = MistralAIClient(
-            self.hass,
-            self.entry.data[CONF_API_KEY],
-            self.entry.data.get(CONF_MODEL, DEFAULT_MODEL),
-            self.entry.data.get(CONF_TEMPERATURE, DEFAULT_TEMPERATURE),
-            self.entry.data.get(CONF_MAX_TOKENS, DEFAULT_MAX_TOKENS),
-        )
+        self._client = Mistral(api_key=self.entry.data[CONF_API_KEY])
 
     async def async_process(
         self, user_input: conversation.ConversationInput
@@ -121,27 +115,25 @@ class MistralConversationEntity(conversation.ConversationEntity):
         raw_prompt = self.entry.data.get(CONF_PROMPT, DEFAULT_PROMPT)
         llm_api = self.entry.options.get(CONF_LLM_HASS_API)
 
-        tools = None
         if llm_api:
             try:
                 llm_api = self.hass.data["llm"][llm_api]
-                # Format tools for Mistral AI API
-                tools = [
-                    {
-                        "type": "function",
-                        "function": {
-                            "name": tool.name,
-                            "description": tool.description,
-                            "parameters": tool.parameters,
-                        },
-                    }
-                    for tool in llm_api.tools
-                ]
+                # Format tools for Mistral AI API (future implementation)
+                # tools = [
+                #     {
+                #         "type": "function",
+                #         "function": {
+                #             "name": tool.name,
+                #             "description": tool.description,
+                #             "parameters": tool.parameters,
+                #         },
+                #     }
+                #     for tool in llm_api.tools
+                # ]
             except KeyError:
                 _LOGGER.error("LLM API %s not found", llm_api)
             except Exception as err:
                 _LOGGER.error("Error formatting tools: %s", err)
-                tools = None
 
         if raw_prompt:
             try:
@@ -187,13 +179,52 @@ class MistralConversationEntity(conversation.ConversationEntity):
                             {"role": content.role, "content": content.content}
                         )
 
-                # Generate response from Mistral AI
-                response = await self._client.generate_response(
-                    user_input.text,
-                    context=prompt,
-                    conversation_history=conversation_history,
-                    tools=tools,
+                # Generate response from Mistral AI using the official client
+                messages = []
+
+                # Add system context if provided
+                if prompt:
+                    messages.append({"role": "system", "content": prompt})
+
+                # Add conversation history if provided (respecting token limits)
+                if conversation_history:
+                    # Add recent history messages until we hit a reasonable limit
+                    history_messages_to_add = []
+
+                    # Add most recent messages first until we reach the limit
+                    for msg in reversed(conversation_history):
+                        # Simple character-based approximation for now
+                        if len(msg["content"]) < 1000:  # Reasonable message size
+                            history_messages_to_add.insert(
+                                0, {"role": msg["role"], "content": msg["content"]}
+                            )
+                            # Stop if we have enough history
+                            if len(history_messages_to_add) >= 10:
+                                break
+
+                    # Add history messages after system prompt
+                    for msg in history_messages_to_add:
+                        messages.insert(1, msg)
+
+                # Add user message (only if it's not already in the conversation history)
+                if (
+                    not conversation_history
+                    or conversation_history[-1].get("content") != user_input.text
+                ):
+                    messages.append({"role": "user", "content": user_input.text})
+
+                # Make the API call using the official Mistral client
+                chat_response = await self._client.chat.complete(
+                    model=self.entry.data.get(CONF_MODEL, DEFAULT_MODEL),
+                    messages=messages,
+                    temperature=self.entry.data.get(
+                        CONF_TEMPERATURE, DEFAULT_TEMPERATURE
+                    ),
+                    max_tokens=self.entry.data.get(CONF_MAX_TOKENS, DEFAULT_MAX_TOKENS),
                 )
+
+                # Extract the response content
+                response = chat_response.choices[0].message.content
 
                 # Add assistant response to chat log
                 chat_log_instance.async_add_assistant_content(

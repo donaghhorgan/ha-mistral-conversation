@@ -103,7 +103,7 @@ async def test_async_added_to_hass():
     entity = MistralConversationEntity(hass, config_entry)
 
     with patch(
-        "custom_components.mistral_conversation.conversation.MistralAIClient"
+        "custom_components.mistral_conversation.conversation.Mistral"
     ) as mock_client_class:
         mock_client = AsyncMock()
         mock_client_class.return_value = mock_client
@@ -111,13 +111,7 @@ async def test_async_added_to_hass():
         await entity.async_added_to_hass()
 
         assert entity._client is not None
-        mock_client_class.assert_called_once_with(
-            hass,
-            "test_api_key",
-            DEFAULT_MODEL,
-            DEFAULT_TEMPERATURE,
-            DEFAULT_MAX_TOKENS,
-        )
+        mock_client_class.assert_called_once_with(api_key="test_api_key")
 
 
 @pytest.mark.asyncio
@@ -139,9 +133,15 @@ async def test_async_process_success():
 
     entity = MistralConversationEntity(hass, config_entry)
 
-    # Mock the client
+    # Mock the official Mistral client
     mock_client = AsyncMock()
-    mock_client.generate_response.return_value = "test response"
+    mock_chat_response = AsyncMock()
+    mock_message = AsyncMock()
+    mock_message.content = "test response"
+    mock_choice = AsyncMock()
+    mock_choice.message = mock_message
+    mock_chat_response.choices = [mock_choice]
+    mock_client.chat.complete.return_value = mock_chat_response
     entity._client = mock_client
 
     # Create conversation input
@@ -163,11 +163,15 @@ async def test_async_process_success():
     # Verify client was called correctly
     # The prompt should be rendered with the actual location name
     expected_context = DEFAULT_PROMPT.replace("{{ ha_name }}", "Test Home")
-    mock_client.generate_response.assert_awaited_once_with(
-        "test question",
-        context=expected_context,
-        conversation_history=[{"role": "user", "content": "test question"}],
-        tools=None,
+    expected_messages = [
+        {"role": "system", "content": expected_context},
+        {"role": "user", "content": "test question"},
+    ]
+    mock_client.chat.complete.assert_awaited_once_with(
+        model=DEFAULT_MODEL,
+        messages=expected_messages,
+        temperature=DEFAULT_TEMPERATURE,
+        max_tokens=DEFAULT_MAX_TOKENS,
     )
 
 

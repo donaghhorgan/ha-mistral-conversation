@@ -24,8 +24,8 @@ from homeassistant.helpers.selector import (
     TextSelectorConfig,
     TextSelectorType,
 )
+from mistralai.client import Mistral
 
-from .client import MistralAIClient
 from .const import (
     CONF_API_KEY,
     CONF_MAX_TOKENS,
@@ -127,16 +127,17 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
         raise InvalidAuth("Prompt must be a string")
 
     try:
-        client = MistralAIClient(
-            hass,
-            data[CONF_API_KEY],
-            data.get(CONF_MODEL, DEFAULT_MODEL),
-        )
+        client = Mistral(api_key=data[CONF_API_KEY])
 
-        if not await client.test_connection():
-            raise CannotConnect(
-                "Failed to connect to Mistral AI API. Please check your API key and network connection."
-            ) from None
+        # Test connection by listing available models
+        try:
+            models = await client.list_models()
+            if not models.data:
+                raise CannotConnect(
+                    "Failed to connect to Mistral AI API. Please check your API key and network connection."
+                ) from None
+        except Exception as err:
+            raise CannotConnect(f"Failed to connect to Mistral AI API: {err}") from err
 
     except aiohttp.ClientError as err:
         if "timeout" in str(err).lower():
@@ -202,9 +203,9 @@ class ConfigFlow(config_entries.ConfigFlow):
 async def get_available_models(hass: HomeAssistant, api_key: str) -> list[str]:
     """Get available models from Mistral AI API."""
     try:
-        client = MistralAIClient(hass, api_key)
-        models_data = await client.get_available_models()
-        return [model["id"] for model in models_data if model.get("id")]
+        client = Mistral(api_key=api_key)
+        models = await client.list_models()
+        return [model.id for model in models.data if hasattr(model, "id")]
     except Exception as err:
         _LOGGER.error("Error fetching available models: %s", err)
         return []
