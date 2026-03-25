@@ -118,18 +118,6 @@ class MistralConversationEntity(conversation.ConversationEntity):
         if llm_api:
             try:
                 llm_api = self.hass.data["llm"][llm_api]
-                # Format tools for Mistral AI API (future implementation)
-                # tools = [
-                #     {
-                #         "type": "function",
-                #         "function": {
-                #             "name": tool.name,
-                #             "description": tool.description,
-                #             "parameters": tool.parameters,
-                #         },
-                #     }
-                #     for tool in llm_api.tools
-                # ]
             except KeyError:
                 _LOGGER.error("LLM API %s not found", llm_api)
             except Exception as err:
