@@ -132,7 +132,7 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
 
         # Test connection by listing available models
         try:
-            models = await client.models.list()
+            models = await client.models.list_async()
             if not models.data:
                 raise CannotConnect(
                     "Failed to connect to Mistral AI API. Please check your API key and network connection."
@@ -205,7 +205,7 @@ async def get_available_models(hass: HomeAssistant, api_key: str) -> list[str]:
     """Get available models from Mistral AI API."""
     try:
         client = Mistral(api_key=api_key)
-        models = await client.models.list()
+        models = await client.models.list_async()
         return [model.id for model in models.data if hasattr(model, "id")]
     except Exception as err:
         _LOGGER.error("Error fetching available models: %s", err)

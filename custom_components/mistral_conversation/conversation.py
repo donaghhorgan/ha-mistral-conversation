@@ -303,7 +303,7 @@ class MistralConversationEntity(conversation.ConversationEntity):
                 # Tool calling iteration loop (up to 10 iterations)
                 for _iteration in range(10):
                     # Make the API call using the official Mistral client
-                    chat_response = await self._client.chat.complete(
+                    chat_response = await self._client.chat.complete_async(
                         model=self.entry.data.get(CONF_MODEL, DEFAULT_MODEL),
                         messages=messages,
                         temperature=self.entry.data.get(

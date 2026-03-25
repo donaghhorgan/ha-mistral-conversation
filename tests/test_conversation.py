@@ -141,7 +141,7 @@ async def test_async_process_success():
     mock_choice = AsyncMock()
     mock_choice.message = mock_message
     mock_chat_response.choices = [mock_choice]
-    mock_client.chat.complete.return_value = mock_chat_response
+    mock_client.chat.complete_async.return_value = mock_chat_response
     entity._client = mock_client
 
     # Create conversation input
@@ -167,7 +167,7 @@ async def test_async_process_success():
         {"role": "system", "content": expected_context},
         {"role": "user", "content": "test question"},
     ]
-    mock_client.chat.complete.assert_awaited_once_with(
+    mock_client.chat.complete_async.assert_awaited_once_with(
         model=DEFAULT_MODEL,
         messages=expected_messages,
         temperature=DEFAULT_TEMPERATURE,
@@ -233,7 +233,7 @@ async def test_async_process_with_llm_api():
     mock_choice = AsyncMock()
     mock_choice.message = mock_message
     mock_chat_response.choices = [mock_choice]
-    mock_client.chat.complete.return_value = mock_chat_response
+    mock_client.chat.complete_async.return_value = mock_chat_response
     entity._client = mock_client
 
     # Create conversation input
@@ -280,7 +280,7 @@ async def test_async_process_with_template_error():
     mock_choice = AsyncMock()
     mock_choice.message = mock_message
     mock_chat_response.choices = [mock_choice]
-    mock_client.chat.complete.return_value = mock_chat_response
+    mock_client.chat.complete_async.return_value = mock_chat_response
     entity._client = mock_client
 
     # Create conversation input
@@ -301,7 +301,7 @@ async def test_async_process_with_template_error():
     assert result.response.speech["plain"]["speech"] == "test response"
 
     # Verify client was called with default prompt
-    mock_client.chat.complete.assert_awaited_once()
+    mock_client.chat.complete_async.assert_awaited_once()
 
 
 @pytest.mark.asyncio
@@ -325,7 +325,7 @@ async def test_async_process_with_client_error():
 
     # Mock the client to raise an error
     mock_client = AsyncMock()
-    mock_client.chat.complete.side_effect = Exception("API error")
+    mock_client.chat.complete_async.side_effect = Exception("API error")
     entity._client = mock_client
 
     # Create conversation input
@@ -374,7 +374,7 @@ async def test_async_process_without_conversation_id():
     mock_choice = AsyncMock()
     mock_choice.message = mock_message
     mock_chat_response.choices = [mock_choice]
-    mock_client.chat.complete.return_value = mock_chat_response
+    mock_client.chat.complete_async.return_value = mock_chat_response
     entity._client = mock_client
 
     # Create conversation input without conversation_id
@@ -440,7 +440,7 @@ async def test_conversation_history():
     mock_choice = AsyncMock()
     mock_choice.message = mock_message
     mock_chat_response.choices = [mock_choice]
-    mock_client.chat.complete.return_value = mock_chat_response
+    mock_client.chat.complete_async.return_value = mock_chat_response
     entity._client = mock_client
 
     # Create conversation input with specific conversation ID
@@ -518,7 +518,7 @@ async def test_conversation_context_management():
     mock_choice = AsyncMock()
     mock_choice.message = mock_message
     mock_chat_response.choices = [mock_choice]
-    mock_client.chat.complete.return_value = mock_chat_response
+    mock_client.chat.complete_async.return_value = mock_chat_response
     entity._client = mock_client
 
     # Create conversation input with specific conversation ID
@@ -537,7 +537,7 @@ async def test_conversation_context_management():
     await entity.async_process(user_input)
 
     # Verify first call included user message in history
-    first_call_args = mock_client.chat.complete.call_args
+    first_call_args = mock_client.chat.complete_async.call_args
     assert first_call_args[1]["messages"] == [
         {
             "role": "system",
@@ -560,7 +560,7 @@ async def test_conversation_context_management():
     await entity.async_process(user_input2)
 
     # Verify second call was made (conversation history is managed by chat_log system)
-    second_call_args = mock_client.chat.complete.call_args
+    second_call_args = mock_client.chat.complete_async.call_args
     assert second_call_args is not None
     # The chat_log system handles conversation history internally
     # We just verify that the second call was made successfully
