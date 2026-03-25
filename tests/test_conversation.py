@@ -34,10 +34,9 @@ async def test_async_setup_entry():
     config_entry = MagicMock(spec=ConfigEntry)
     config_entry.data = {
         CONF_API_KEY: "test_api_key",
-        CONF_MODEL: DEFAULT_MODEL,
     }
     config_entry.entry_id = "test_entry_id"
-    config_entry.options = {}
+    config_entry.options = {CONF_MODEL: DEFAULT_MODEL}
 
     mock_add_entities = MagicMock()
 
@@ -56,10 +55,9 @@ async def test_conversation_entity_initialization():
     config_entry = MagicMock(spec=ConfigEntry)
     config_entry.data = {
         CONF_API_KEY: "test_api_key",
-        CONF_MODEL: "test_model",
     }
     config_entry.entry_id = "test_entry_id"
-    config_entry.options = {}
+    config_entry.options = {CONF_MODEL: "test_model"}
 
     entity = MistralConversationEntity(hass, config_entry)
 
@@ -75,10 +73,9 @@ async def test_supported_languages():
     config_entry = MagicMock(spec=ConfigEntry)
     config_entry.data = {
         CONF_API_KEY: "test_api_key",
-        CONF_MODEL: DEFAULT_MODEL,
     }
     config_entry.entry_id = "test_entry_id"
-    config_entry.options = {}
+    config_entry.options = {CONF_MODEL: DEFAULT_MODEL}
 
     entity = MistralConversationEntity(hass, config_entry)
 
@@ -93,12 +90,11 @@ async def test_async_added_to_hass():
     config_entry = MagicMock(spec=ConfigEntry)
     config_entry.data = {
         CONF_API_KEY: "test_api_key",
-        CONF_MODEL: DEFAULT_MODEL,
         CONF_TEMPERATURE: DEFAULT_TEMPERATURE,
         CONF_MAX_TOKENS: DEFAULT_MAX_TOKENS,
     }
     config_entry.entry_id = "test_entry_id"
-    config_entry.options = {}
+    config_entry.options = {CONF_MODEL: DEFAULT_MODEL}
 
     entity = MistralConversationEntity(hass, config_entry)
 
@@ -125,11 +121,10 @@ async def test_async_process_success():
     config_entry = MagicMock(spec=ConfigEntry)
     config_entry.data = {
         CONF_API_KEY: "test_api_key",
-        CONF_MODEL: DEFAULT_MODEL,
         CONF_PROMPT: DEFAULT_PROMPT,
     }
     config_entry.entry_id = "test_entry_id"
-    config_entry.options = {}
+    config_entry.options = {CONF_MODEL: DEFAULT_MODEL}
 
     entity = MistralConversationEntity(hass, config_entry)
 
@@ -183,10 +178,9 @@ async def test_async_process_client_not_initialized():
     config_entry = MagicMock(spec=ConfigEntry)
     config_entry.data = {
         CONF_API_KEY: "test_api_key",
-        CONF_MODEL: DEFAULT_MODEL,
     }
     config_entry.entry_id = "test_entry_id"
-    config_entry.options = {}
+    config_entry.options = {CONF_MODEL: DEFAULT_MODEL}
 
     entity = MistralConversationEntity(hass, config_entry)
     entity._client = None
@@ -216,12 +210,11 @@ async def test_async_process_with_llm_api():
     config_entry = MagicMock(spec=ConfigEntry)
     config_entry.data = {
         CONF_API_KEY: "test_api_key",
-        CONF_MODEL: DEFAULT_MODEL,
         CONF_PROMPT: DEFAULT_PROMPT,
         CONF_LLM_HASS_API: "test_llm",
     }
     config_entry.entry_id = "test_entry_id"
-    config_entry.options = {}
+    config_entry.options = {CONF_MODEL: DEFAULT_MODEL}
 
     entity = MistralConversationEntity(hass, config_entry)
 
@@ -264,11 +257,10 @@ async def test_async_process_with_template_error():
     config_entry = MagicMock(spec=ConfigEntry)
     config_entry.data = {
         CONF_API_KEY: "test_api_key",
-        CONF_MODEL: DEFAULT_MODEL,
         CONF_PROMPT: "{{ invalid_template_syntax ",
     }
     config_entry.entry_id = "test_entry_id"
-    config_entry.options = {}
+    config_entry.options = {CONF_MODEL: DEFAULT_MODEL}
 
     entity = MistralConversationEntity(hass, config_entry)
 
@@ -315,11 +307,10 @@ async def test_async_process_with_client_error():
     config_entry = MagicMock(spec=ConfigEntry)
     config_entry.data = {
         CONF_API_KEY: "test_api_key",
-        CONF_MODEL: DEFAULT_MODEL,
         CONF_PROMPT: DEFAULT_PROMPT,
     }
     config_entry.entry_id = "test_entry_id"
-    config_entry.options = {}
+    config_entry.options = {CONF_MODEL: DEFAULT_MODEL}
 
     entity = MistralConversationEntity(hass, config_entry)
 
@@ -358,11 +349,10 @@ async def test_async_process_without_conversation_id():
     config_entry = MagicMock(spec=ConfigEntry)
     config_entry.data = {
         CONF_API_KEY: "test_api_key",
-        CONF_MODEL: DEFAULT_MODEL,
         CONF_PROMPT: DEFAULT_PROMPT,
     }
     config_entry.entry_id = "test_entry_id"
-    config_entry.options = {}
+    config_entry.options = {CONF_MODEL: DEFAULT_MODEL}
 
     entity = MistralConversationEntity(hass, config_entry)
 
@@ -403,10 +393,9 @@ async def test_attribution():
     config_entry = MagicMock(spec=ConfigEntry)
     config_entry.data = {
         CONF_API_KEY: "test_api_key",
-        CONF_MODEL: DEFAULT_MODEL,
     }
     config_entry.entry_id = "test_entry_id"
-    config_entry.options = {}
+    config_entry.options = {CONF_MODEL: DEFAULT_MODEL}
 
     entity = MistralConversationEntity(hass, config_entry)
 
@@ -424,11 +413,10 @@ async def test_conversation_history():
     config_entry = MagicMock(spec=ConfigEntry)
     config_entry.data = {
         CONF_API_KEY: "test_api_key",
-        CONF_MODEL: DEFAULT_MODEL,
         CONF_PROMPT: DEFAULT_PROMPT,
     }
     config_entry.entry_id = "test_entry_id"
-    config_entry.options = {}
+    config_entry.options = {CONF_MODEL: DEFAULT_MODEL}
 
     entity = MistralConversationEntity(hass, config_entry)
 
@@ -502,9 +490,9 @@ async def test_conversation_context_management():
     config_entry = MagicMock(spec=ConfigEntry)
     config_entry.data = {
         CONF_API_KEY: "test_api_key",
-        CONF_MODEL: DEFAULT_MODEL,
         CONF_PROMPT: DEFAULT_PROMPT,
     }
+    config_entry.options = {CONF_MODEL: DEFAULT_MODEL}
     config_entry.entry_id = "test_entry_id"
     config_entry.options = {}
 

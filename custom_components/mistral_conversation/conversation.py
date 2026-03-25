@@ -141,7 +141,7 @@ class MistralConversationEntity(conversation.ConversationEntity):
         self.hass = hass
         self.entry = entry
         self._client: Mistral | None = None
-        self._attr_name = f"Mistral AI ({entry.data[CONF_MODEL]})"
+        self._attr_name = f"Mistral AI ({entry.options.get(CONF_MODEL, DEFAULT_MODEL)})"
         self._attr_unique_id = entry.entry_id
 
     @property
