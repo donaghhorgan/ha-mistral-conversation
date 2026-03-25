@@ -217,7 +217,6 @@ class OptionsFlow(config_entries.OptionsFlow):
 
     def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
         """Initialize options flow."""
-        self.config_entry = config_entry
         self.available_models: list[str] = []
 
     @config_entries.callback
@@ -237,7 +236,7 @@ class OptionsFlow(config_entries.OptionsFlow):
         # Fetch available models from API
         api_key = self.config_entry.data.get(CONF_API_KEY)
         if api_key:
-            # This will be populated in async_step_init
+            # Models will be fetched in async_step_init
             self.available_models = []
 
         return vol.Schema(
