@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from typing import Any, TypedDict
 
 from homeassistant.components import conversation
 from homeassistant.components.conversation import chat_log
@@ -27,6 +28,97 @@ from .const import (
     DEFAULT_PROMPT,
     DEFAULT_TEMPERATURE,
 )
+
+
+# Type definitions for better type hints
+class MistralTool(TypedDict):
+    """Type definition for Mistral AI tool format."""
+
+    type: str
+    function: dict[str, Any]
+
+
+class MistralMessage(TypedDict):
+    """Type definition for Mistral AI message format."""
+
+    role: str
+    content: str
+
+
+class MistralMessageWithToolCalls(MistralMessage, total=False):
+    """Type definition for Mistral AI message with tool calls."""
+
+    tool_calls: list[dict[str, Any]]
+
+
+class MistralToolMessage(TypedDict):
+    """Type definition for Mistral AI tool message format."""
+
+    role: str
+    name: str
+    content: str
+
+
+class MistralParameters(TypedDict, total=False):
+    """Type definition for Mistral AI tool parameters."""
+
+    type: str
+    properties: dict[str, dict[str, str]]
+    required: list[str]
+
+
+def _format_tool(tool: Any) -> MistralTool:
+    """Format a Home Assistant tool for Mistral AI API."""
+    tool_schema: MistralTool = {
+        "type": "function",
+        "function": {
+            "name": tool.name,
+            "description": tool.description or "",
+            "strict": True,  # Always use strict mode for tool calls
+        },
+    }
+
+    # Add parameters if tool has a schema
+    if hasattr(tool, "parameters") and tool.parameters:
+        properties: dict[str, dict[str, str]] = {}
+        required: list[str] = []
+
+        for param_name, param_schema in tool.parameters.schema.items():
+            param_info: dict[str, str] = {"type": "string"}  # Default to string
+            if hasattr(param_schema, "description"):
+                param_info["description"] = param_schema.description
+            if param_name in param_schema.required:
+                required.append(param_name)
+
+            properties[param_name] = param_info
+
+        if properties:
+            parameters: MistralParameters = {"type": "object", "properties": properties}
+            if required:
+                parameters["required"] = required
+            tool_schema["function"]["parameters"] = parameters
+
+    return tool_schema
+
+
+def _convert_content(content: chat_log.Content) -> MistralMessage:
+    """Convert Home Assistant chat content to Mistral AI message format."""
+    content_text = content.content or ""  # type: ignore[unresolved-attr]
+    if content.role == "user":
+        return {"role": "user", "content": content_text}
+    elif content.role == "assistant":
+        return {"role": "assistant", "content": content_text}
+    else:
+        # Handle system messages or other roles
+        return {"role": "system", "content": content_text}
+
+
+def _transform_stream(response: Any) -> MistralMessage:
+    """Transform Mistral AI streaming response for Home Assistant chat log."""
+    # For now, return a simple structure that can be handled by the chat log
+    # This would need to be enhanced for actual streaming support
+    return {"content": str(response), "role": "assistant"}
+
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -201,26 +293,119 @@ class MistralConversationEntity(conversation.ConversationEntity):
                 ):
                     messages.append({"role": "user", "content": user_input.text})
 
-                # Make the API call using the official Mistral client
-                chat_response = await self._client.chat.complete(
-                    model=self.entry.data.get(CONF_MODEL, DEFAULT_MODEL),
-                    messages=messages,
-                    temperature=self.entry.data.get(
-                        CONF_TEMPERATURE, DEFAULT_TEMPERATURE
-                    ),
-                    max_tokens=self.entry.data.get(CONF_MAX_TOKENS, DEFAULT_MAX_TOKENS),
-                )
+                # Format tools for Mistral AI API if available
+                tools = None
+                if chat_log_instance.llm_api:
+                    tools = [
+                        _format_tool(tool) for tool in chat_log_instance.llm_api.tools
+                    ]
 
-                # Extract the response content
-                response = chat_response.choices[0].message.content
-
-                # Add assistant response to chat log
-                chat_log_instance.async_add_assistant_content(
-                    chat_log.AssistantContent(
-                        agent_id=self.unique_id or self.entry.entry_id,
-                        content=response,
+                # Tool calling iteration loop (up to 10 iterations)
+                for _iteration in range(10):
+                    # Make the API call using the official Mistral client
+                    chat_response = await self._client.chat.complete(
+                        model=self.entry.data.get(CONF_MODEL, DEFAULT_MODEL),
+                        messages=messages,
+                        temperature=self.entry.data.get(
+                            CONF_TEMPERATURE, DEFAULT_TEMPERATURE
+                        ),
+                        max_tokens=self.entry.data.get(
+                            CONF_MAX_TOKENS, DEFAULT_MAX_TOKENS
+                        ),
+                        tools=tools if tools else None,
                     )
-                )
+
+                    # Extract the response content
+                    response = chat_response.choices[0].message.content
+                    tool_calls = getattr(
+                        chat_response.choices[0].message, "tool_calls", None
+                    )
+
+                    # Add assistant response to chat log
+                    chat_log_instance.async_add_assistant_content(
+                        chat_log.AssistantContent(
+                            agent_id=self.unique_id or self.entry.entry_id,
+                            content=response,
+                        )
+                    )
+
+                    # Handle tool calls if any
+                    if tool_calls and chat_log_instance.llm_api:
+                        for tool_call in tool_calls:
+                            tool_name = tool_call.function.name
+                            tool_args = tool_call.function.arguments
+
+                            # Find and call the corresponding tool
+                            for tool in chat_log_instance.llm_api.tools:
+                                if tool.name == tool_name:
+                                    try:
+                                        # Call the tool
+                                        tool_result = await tool.async_call(
+                                            self.hass,
+                                            tool_input=tool_args,
+                                            llm_context=user_input.as_llm_context(
+                                                "mistral_conversation"
+                                            ),
+                                        )
+
+                                        # Add tool result to chat log
+                                        chat_log_instance.async_add_tool_result(  # type: ignore[attr-defined]
+                                            chat_log.ToolResult(  # type: ignore[attr-defined]
+                                                tool_name=tool_name,
+                                                tool_args=tool_args,
+                                                result=tool_result,
+                                            )
+                                        )
+
+                                        # Add tool call and result to messages for next iteration
+                                        messages.append(
+                                            {
+                                                "role": "assistant",
+                                                "content": response,
+                                                "tool_calls": [
+                                                    {
+                                                        "id": tool_call.id,
+                                                        "type": "function",
+                                                        "function": {
+                                                            "name": tool_name,
+                                                            "arguments": tool_args,
+                                                        },
+                                                    }
+                                                ],
+                                            }
+                                        )
+
+                                        messages.append(
+                                            {
+                                                "role": "tool",
+                                                "name": tool_name,
+                                                "content": str(tool_result),
+                                            }
+                                        )
+
+                                    except Exception as err:
+                                        _LOGGER.error(
+                                            "Error calling tool %s: %s", tool_name, err
+                                        )
+                                        chat_log_instance.async_add_tool_result(  # type: ignore[attr-defined]
+                                            chat_log.ToolResult(  # type: ignore[attr-defined]
+                                                tool_name=tool_name,
+                                                tool_args=tool_args,
+                                                error=str(err),
+                                            )
+                                        )
+
+                                        # Add error response to messages
+                                        messages.append(
+                                            {
+                                                "role": "tool",
+                                                "name": tool_name,
+                                                "content": f"Error: {str(err)}",
+                                            }
+                                        )
+
+                    if not chat_log_instance.unresponded_tool_results:
+                        break
 
                 # Store conversation ID for reference
                 _LOGGER.debug("Conversation %s updated with response", conversation_id)
