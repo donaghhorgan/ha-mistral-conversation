@@ -87,6 +87,13 @@ async def test_supported_languages():
 async def test_async_added_to_hass():
     """Test entity added to hass."""
     hass = MagicMock(spec=HomeAssistant)
+
+    # Mock async_add_executor_job to return the result of the function
+    async def mock_executor_job(func):
+        return func()
+
+    hass.async_add_executor_job = mock_executor_job
+
     config_entry = MagicMock(spec=ConfigEntry)
     config_entry.data = {
         CONF_API_KEY: "test_api_key",

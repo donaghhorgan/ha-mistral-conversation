@@ -152,7 +152,12 @@ class MistralConversationEntity(conversation.ConversationEntity):
     async def async_added_to_hass(self) -> None:
         """When entity is added to hass."""
         await super().async_added_to_hass()
-        self._client = Mistral(api_key=self.entry.data[CONF_API_KEY])
+
+        # Initialize Mistral client in executor to avoid blocking the event loop
+        def _init_client():
+            return Mistral(api_key=self.entry.data[CONF_API_KEY])
+
+        self._client = await self.hass.async_add_executor_job(_init_client)
 
     async def async_process(
         self, user_input: conversation.ConversationInput
