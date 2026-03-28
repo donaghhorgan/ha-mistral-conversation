@@ -7,16 +7,19 @@
             "configureZshAsDefaultShell": true,
             "username": "vscode"
         },
-        "ghcr.io/devcontainers-extra/features/uv:1": {},
-        "ghcr.io/devcontainers-extra/features/zsh-plugins:0": {
-            "plugins": "uv dotenv git python pip"
-        },
         "ghcr.io/devcontainers/features/git:1": {
             "ppa": true,
             "version": "latest"
+        },
+        "ghcr.io/devcontainers/features/node:1": {
+            "version": "24"
+        },
+        "ghcr.io/devcontainers-extra/features/uv:1": {},
+        "ghcr.io/devcontainers-extra/features/zsh-plugins:0": {
+            "plugins": "uv dotenv git python pip"
         }
     },
-    "postCreateCommand": "uv sync --dev",
+    "postCreateCommand": "npm install -g @aisuite/chub && uv sync --dev",
     "customizations": {
         "vscode": {
             "extensions": [
@@ -24,7 +27,6 @@
                 "charliermarsh.ruff",
                 "DavidAnson.vscode-markdownlint",
                 "eamodio.gitlens",
-
                 "github.vscode-github-actions",
                 "home-assistant.vscode-home-assistant",
                 "ms-python.debugpy",
@@ -42,7 +44,9 @@
                 },
                 "editor.defaultFormatter": "charliermarsh.ruff",
                 "editor.formatOnSave": true,
-                "editor.rulers": [88],
+                "editor.rulers": [
+                    88
+                ],
                 "editor.wordWrap": "wordWrapColumn",
                 "editor.wordWrapColumn": 88,
                 "terminal.integrated.defaultProfile.linux": "zsh",
@@ -51,7 +55,6 @@
                 "ruff.enable": true,
                 "ruff.organizeImports": true,
                 "ruff.fixAll": true,
-
                 "git.enableCommitSigning": true,
                 "git.autofetch": true,
                 "gitlens.codeLens.enabled": true

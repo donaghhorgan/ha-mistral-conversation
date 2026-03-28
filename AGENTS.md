@@ -8,84 +8,56 @@ integration conventions:
 
 ```bash
 custom_components/mistral_conversation/
-├── __init__.py          # Integration setup and entry point
-├── config_flow.py       # Configuration flow handler
-├── manifest.json        # Integration metadata
-├── strings.json         # Translation strings
-├── services.yaml        # Service definitions (if any)
-└── ...                  # Other Python files
-scripts/
-└── ...                  # Helper scripts for development
+├── __init__.py     # Integration setup and entry point
+├── config_flow.py  # Configuration flow handler
+├── const.py        # Application constants
+├── manifest.json   # Integration metadata
+├── translations/   # Language files
+└── ...
+hacs.json           # Home Assistant Communicty Store (HACS) configuration
+scripts/            # Helper scripts for development
+tests/              # Unit tests
 ```
 
-## Developer Setup
+## Development Workflow
 
-### uv
+1. Create a plan
+2. Make code changes
+3. Ensure precommit checks pass: `uv run pre-commit run`
+4. Ensure unit tests pass: `uv run pytest`
+5. Commit to git and push
 
-Run commands using `uv run`:
+### Python Package Management
 
-```bash
-# Run a script
-uv run python script.py
+- Use `uv` for Python package management
+- Use groups to separate Python dependencies:
+  - For production dependencies: `uv add package-name`
+  - For development dependencies: `uv add --dev package-name`
+- Use `uv run` to run Python commands and tools
 
-# Install pre-commit hooks
-uv run pre-commit install
+### Code Style and Coding Conventions
 
-# Run tests
-uv run pytest
+- Python code should be written for the version in [`.python-version`](.python-version)
+- Write unit tests for new functionality
+- Consult the [Home Assistant Developer
+  Docs](https://developers.home-assistant.io/) when making changes to Home
+  Assistant integration code to ensure that best practices are followed.
+- Use the [search](https://developers.home-assistant.io/search/?q=query)
+  function to search for relevant content.
+- Use the `get-api-docs` skill to fetch current documentation on dependencies.
+- Fix linting errors:
+  - Markdown: `uv run pymarkdown fix file.md`
+  - Python: `uv run ruff check --fix`
+  - TOML: `uv run toml-sort --in-place file.toml`
 
-# Run linting
-uv run ruff check .
-```
+### Documentation Standards
 
-Dev dependencies (testing, linting, etc.) should use the `--group dev` flag:
+- In general, write concise documentation
+- For Python, use docstrings
+- For utility scripts, use [`scripts/README.md`](./scripts/README.md). Each
+  script should have a section with a description and some usage examples.
+- For the overall project, use [`README.md`](./README.md)
 
-```bash
-# Add development dependencies
-uv add --group dev package-name
+### Source Code Management
 
-# Example: Add pytest with coverage
-uv add --group dev pytest pytest-cov
-```
-
-This keeps production dependencies clean and separates development tools.
-
-### Linting
-
-Run linting manually:
-
-```bash
-# Run all checks
-uv run pre-commit run --all-files
-
-# Specific checks
-uv run ruff check .
-uv run ty .
-```
-
-## Documentation Lookup
-
-Use [chub](https://pypi.org/project/chub/) to quickly access Python package documentation:
-
-```bash
-uv run chub -h                                 # CLI help
-uv run chub search "stripe"                    # BM25 search
-uv run chub search "auth" --limit 5            # limit results
-uv run chub get stripe/api --lang python       # fetch a doc
-uv run chub get openai/chat --version 4.0      # specific version
-uv run chub list                               # list all docs
-uv run chub list --json                        # JSON output
-```
-
-**Note:** Chub does not yet support Home Assistant documentation.
-For Home Assistant docs, use:
-
-- [Official Home Assistant Developer Docs](https://developers.home-assistant.io/)
-
-## Testing
-
-Run tests with:
-
-```bash
-uv run pytest
-```
+- Write concise but descriptive commit messages
