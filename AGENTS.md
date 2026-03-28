@@ -34,6 +34,10 @@ tests/              # Unit tests
   - For production dependencies: `uv add package-name`
   - For development dependencies: `uv add --dev package-name`
 - Use `uv run` to run Python commands and tools
+- Be aware that `uv` stores its virtual environment in [`.venv`](./.venv). If
+  you are grepping, you should consider whether to exclude `.venv` to speed up
+  your search, e.g., if you are searching for info from project files rather
+  than Python dependencies.
 
 ### Code Style and Coding Conventions
 
