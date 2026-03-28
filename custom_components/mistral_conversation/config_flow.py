@@ -233,11 +233,10 @@ class OptionsFlow(config_entries.OptionsFlow):
             for api in llm.async_get_apis(self.hass)
         ]
 
-        # Fetch available models from API
-        api_key = self.config_entry.data.get(CONF_API_KEY)
-        if api_key:
-            # Models will be fetched in async_step_init
-            self.available_models = []
+        # Use available models if they have been fetched, otherwise use default
+        model_options = (
+            self.available_models if self.available_models else [DEFAULT_MODEL]
+        )
 
         return vol.Schema(
             {
@@ -246,9 +245,7 @@ class OptionsFlow(config_entries.OptionsFlow):
                     default=self.config_entry.options.get(CONF_MODEL, DEFAULT_MODEL),
                 ): SelectSelector(
                     SelectSelectorConfig(
-                        options=self.available_models
-                        if self.available_models
-                        else [DEFAULT_MODEL],
+                        options=model_options,
                         mode=SelectSelectorMode.DROPDOWN,
                     )
                 ),
