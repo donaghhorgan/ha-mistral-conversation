@@ -3,29 +3,27 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import AsyncGenerator
-from typing import Any, Callable, Literal, cast
+from typing import Any, TYPE_CHECKING
 
 import mistralai
-from mistralai.client import Mistral
 import voluptuous as vol
-from voluptuous_openapi import convert
-
 from homeassistant.components import conversation
-from homeassistant.config_entries import ConfigEntry, ConfigSubentry
-from homeassistant.const import CONF_LLM_HASS_API
-from homeassistant.core import HomeAssistant
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.exceptions import HomeAssistantError
-from homeassistant.helpers import device_registry as dr, llm
+from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import llm
 from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.json import json_dumps
-from homeassistant.util import slugify
+from mistralai.client import Mistral
+from voluptuous_openapi import convert
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator, Callable
 
 from .const import (
     CONF_API_KEY,
     CONF_MAX_TOKENS,
     CONF_MODEL,
-    CONF_PROMPT,
     CONF_TEMPERATURE,
     DEFAULT_MAX_TOKENS,
     DEFAULT_MODEL,
@@ -109,8 +107,8 @@ def _convert_content_to_mistral(
 
 
 async def _transform_stream(
-    response_stream: AsyncGenerator[Any, None],
-) -> AsyncGenerator[conversation.AssistantContentDeltaDict, None]:
+    response_stream: AsyncGenerator[Any],
+) -> AsyncGenerator[conversation.AssistantContentDeltaDict]:
     """Transform Mistral AI streaming response for Home Assistant chat log."""
     async for stream_response in response_stream:
         # Handle different response formats from Mistral AI
@@ -155,7 +153,7 @@ class MistralBaseLLMEntity(Entity):
         self.entry = entry
         self.subentry = subentry
         self._attr_unique_id = subentry.subentry_id if subentry else entry.entry_id
-        
+
         model = subentry.data.get(CONF_MODEL, DEFAULT_MODEL) if subentry else DEFAULT_MODEL
         self._attr_device_info = dr.DeviceInfo(
             identifiers={(DOMAIN, self._attr_unique_id)},
@@ -164,13 +162,13 @@ class MistralBaseLLMEntity(Entity):
             model=model,
             entry_type=dr.DeviceEntryType.SERVICE,
         )
-        
+
         self._client: Mistral | None = None
 
     async def async_added_to_hass(self) -> None:
         """When entity is added to hass."""
         await super().async_added_to_hass()
-        
+
         # Initialize Mistral client
         def _init_client():
             return Mistral(api_key=self.entry.data[CONF_API_KEY])
@@ -195,7 +193,7 @@ class MistralBaseLLMEntity(Entity):
             raise HomeAssistantError("Mistral AI client not initialized")
 
         options = self.subentry.data if self.subentry else self.entry.data
-        
+
         # Convert chat log content to Mistral format
         messages = [_convert_content_to_mistral(content) for content in chat_log.content]
 
@@ -347,7 +345,7 @@ class MistralBaseLLMEntity(Entity):
             raise HomeAssistantError("Mistral AI client not initialized")
 
         options = self.subentry.data if self.subentry else self.entry.data
-        
+
         # Convert chat log content to Mistral format
         messages = [_convert_content_to_mistral(content) for content in chat_log.content]
 
@@ -373,7 +371,7 @@ class MistralBaseLLMEntity(Entity):
 
             # Process the streaming response
             async for delta_content in chat_log.async_add_delta_content_stream(
-                self.entity_id, 
+                self.entity_id,
                 _transform_stream(response_stream)
             ):
                 pass  # Content is added to chat log by the stream processor

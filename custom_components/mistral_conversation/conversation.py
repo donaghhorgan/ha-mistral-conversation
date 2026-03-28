@@ -2,15 +2,13 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from homeassistant.components import conversation
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_LLM_HASS_API, MATCH_ALL
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import CONF_PROMPT, DOMAIN, DEFAULT_MODEL, CONF_MODEL
+from .const import CONF_MODEL, CONF_PROMPT, DEFAULT_MODEL, DOMAIN
 from .entity import MistralBaseLLMEntity
 
 
